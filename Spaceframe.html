@@ -4878,7 +4878,46 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function drawIrStrengthSector(ctx,cx,cy,inner,outer,mid,half,strength){strength=clamp01(strength);const g=Math.round(92+strength*142),b=Math.round(28+strength*54),gradient=ctx.createRadialGradient(cx,cy,inner,cx,cy,outer);gradient.addColorStop(0,`rgba(255,${g},${b},${(.05+strength*.08).toFixed(3)})`);gradient.addColorStop(.58,`rgba(255,${g},${b},${(.12+strength*.24).toFixed(3)})`);gradient.addColorStop(1,`rgba(255,${Math.min(246,g+24)},${Math.min(126,b+30)},${(.24+strength*.46).toFixed(3)})`);drawAnnularSector(ctx,cx,cy,inner,outer,mid-half,mid+half,gradient,`rgba(255,${Math.min(248,g+34)},132,${(.36+strength*.48).toFixed(3)})`);const coreHalf=Math.max(.025,half*(.28+(1-strength)*.18)),coreInner=inner+(outer-inner)*.14,coreGradient=ctx.createRadialGradient(cx,cy,coreInner,cx,cy,outer);coreGradient.addColorStop(0,'rgba(255,132,42,0)');coreGradient.addColorStop(.7,`rgba(255,${Math.round(174+strength*70)},78,${(.12+strength*.3).toFixed(3)})`);coreGradient.addColorStop(1,`rgba(255,244,174,${(.22+strength*.48).toFixed(3)})`);drawAnnularSector(ctx,cx,cy,coreInner,outer,mid-coreHalf,mid+coreHalf,coreGradient,null);}
   function drawCompactIrPanel(ctx,x,y,w,h,ship){ctx.save();ctx.fillStyle='rgba(7,20,29,.9)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(255,190,102,.24)';ctx.strokeRect(x+.5,y+.5,w-1,h-1);ctx.fillStyle='rgba(255,221,145,.92)';ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('IR 탐지',x+8,y+13);const cx=x+w/2,cy=y+Math.min(h*.42,105),outer=Math.max(20,Math.min(w*.36,h*.27)),inner=outer*.36;ctx.strokeStyle='rgba(145,172,186,.22)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,outer,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);ctx.stroke();}const contacts=irContactTracks(ship,5);ctx.globalCompositeOperation='lighter';for(const tr of contacts){drawIrStrengthSector(ctx,cx,cy,inner,outer,tr.bearingEstimate||0,Math.max(.05,tr.irBearingHalfRad||.12),tr.irCueStrength||0);}ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(255,210,145,.88)';ctx.font='700 8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.fillText(contacts.length?`${contacts.length} IR CONTACT`:'NO IR CONTACT',cx,cy+3);const strongest=contacts[0],infoY=Math.min(y+h-48,cy+outer+18);ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';if(strongest){const strength=clamp01(strongest.irCueStrength||0),bearing=((strongest.bearingEstimate||0)*180/Math.PI+360)%360,barX=x+12,barY=y+h-25,barW=w-24;ctx.textAlign='left';ctx.fillStyle='rgba(173,198,209,.78)';ctx.fillText(`최대 열원 ${bearing.toFixed(0).padStart(3,'0')}° ±${Math.round(strongest.irBearingHalfDeg||0)}°`,x+10,infoY);ctx.textAlign='right';ctx.fillStyle='#ffd0a0';ctx.fillText(`${Math.round(strength*100)}%`,x+w-10,infoY);ctx.fillStyle='rgba(48,61,68,.88)';ctx.fillRect(barX,barY,barW,7);const barGrad=ctx.createLinearGradient(barX,0,barX+barW,0);barGrad.addColorStop(0,'rgba(137,74,35,.7)');barGrad.addColorStop(.6,'rgba(255,145,51,.92)');barGrad.addColorStop(1,'rgba(255,244,173,1)');ctx.fillStyle=barGrad;ctx.fillRect(barX,barY,barW*strength,7);ctx.strokeStyle='rgba(255,213,145,.46)';ctx.strokeRect(barX+.5,barY+.5,barW-1,6);}else{ctx.fillStyle='rgba(162,190,203,.7)';ctx.textAlign='center';ctx.fillText('예상 방위 내부 밝기 = 열원 세기',cx,y+h-18);}ctx.restore();}
   function drawCompactEoPanel(ctx,x,y,w,h,ship){ctx.save();ctx.fillStyle='rgba(7,20,29,.9)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(107,204,244,.26)';ctx.strokeRect(x+.5,y+.5,w-1,h-1);ctx.fillStyle='rgba(166,225,255,.94)';ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('EO/LRF 관측',x+8,y+13);const contacts=eoContactTracks(ship,5),track=contacts[0],target=track?getShipById(track.targetId):null;if(!track||!target){ctx.fillStyle='rgba(154,181,193,.68)';ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.fillText('NO EO CONTACT',x+w/2,y+h/2+3);ctx.restore();return;}const stage=track.eoIdentificationStage||1,previewH=Math.max(76,Math.min(h*.62,h-82));drawObservedDiagramInRect(ctx,target,track,stage,x+7,y+19,w-14,previewH);const infoY=y+previewH+34;ctx.textAlign='left';ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='#d9f4ff';ctx.fillText(EO_IDENTIFICATION_LABELS[stage],x+9,infoY);ctx.textAlign='right';ctx.fillStyle=track.eoLrfLocked?'#8ff0ff':'rgba(163,191,205,.78)';ctx.fillText(track.eoLrfLocked?'LRF RANGE FIX':'LRF ACQUIRING',x+w-9,infoY);ctx.textAlign='left';ctx.fillStyle='rgba(163,191,205,.78)';ctx.fillText(`각크기 ${(track.eoAngularMrad||0).toFixed(2)}mrad`,x+9,infoY+16);ctx.textAlign='right';ctx.fillText(`EO ${Math.round((track.eoQuality||0)*100)}%`,x+w-9,infoY+16);ctx.textAlign='left';const shieldRead=shieldIdentificationReadout(track);ctx.fillStyle=shieldRead.tone==='known'?'#83dcff':shieldRead.tone==='hint'?'rgba(180,150,255,.85)':'rgba(163,191,205,.64)';ctx.fillText(shieldRead.known&&shieldRead.detail?`${shieldRead.headline} · ${shieldRead.detail}`:shieldRead.headline,x+9,infoY+32);ctx.textAlign='right';ctx.fillStyle='#e7f6fb';ctx.fillText(track.eoLrfLocked?`${track.rangeEstimateM>=1000?(track.rangeEstimateM/1000).toFixed(2)+'km':Math.round(track.rangeEstimateM)+'m'} ±${Math.round(track.rangeUncertaintyM)}m`:`LRF ${Math.round((track.eoLrfQuality||0)*100)}%`,x+w-9,infoY+32);ctx.restore();}
-  function drawSensorOverviewPanels(ctx,w,h,ship){ctx.clearRect(0,0,w,h);const gap=6,leftW=Math.max(120,(w-gap)/2),rightX=leftW+gap;drawCompactIrPanel(ctx,0,0,leftW,h,ship);drawCompactEoPanel(ctx,rightX,0,Math.max(120,w-rightX),h,ship);}
+  function drawSensorOverviewPanels(ctx,w,h,ship){
+    ctx.clearRect(0,0,w,h);
+    const gap=6;
+    // ESM을 탑재했을 때만 하단 스트립을 붙인다. 3분할로 나누면 IR·EO 패널이 좁아져
+    // 좌우 정렬 텍스트끼리 겹친다 — 멀쩡히 동작하던 패널을 망가뜨리지 않는다.
+    // 그리고 ESM의 본체는 전장 화면의 방위 스트로브이지 이 패널이 아니다.
+    const hasEsm=(ship?.design?.modules||[]).some(m=>m.type==='esm'&&m.hp>0);
+    const stripH=hasEsm?Math.min(46,Math.max(34,h*.2)):0,topH=h-(stripH?stripH+gap:0);
+    const leftW=Math.max(120,(w-gap)/2),rightX=leftW+gap;
+    drawCompactIrPanel(ctx,0,0,leftW,topH,ship);
+    drawCompactEoPanel(ctx,rightX,0,Math.max(120,w-rightX),topH,ship);
+    if(stripH)drawEsmStrip(ctx,0,topH+gap,w,stripH,ship);
+  }
+  // 방위와 들리는 대역만 한 줄로. 극좌표 원은 전장 화면 스트로브가 이미 보여준다.
+  function drawEsmStrip(ctx,x,y,w,h,ship){
+    ctx.save();
+    ctx.fillStyle='rgba(15,12,28,.92)';ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle='rgba(178,146,255,.26)';ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(214,196,255,.94)';ctx.fillText('ESM',x+8,y+h*.32);
+    const contacts=emContactTracks(ship,3),top=contacts[0];
+    ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';
+    if(!top){ctx.fillStyle='rgba(150,140,180,.72)';ctx.fillText('수신 신호 없음',x+40,y+h*.32);ctx.restore();return;}
+    const halfDeg=(top.emBearingHalfRad||0)*180/Math.PI,bearing=(((top.emBearing||0)*180/Math.PI)+360)%360;
+    ctx.fillStyle='rgba(226,212,255,.95)';
+    ctx.fillText(`${contacts.length} CONTACT · 방위 ${bearing.toFixed(0)}° ±${halfDeg.toFixed(0)}°`,x+40,y+h*.32);
+    ctx.fillStyle='rgba(255,190,120,.9)';ctx.fillText('거리 미상',x+w-70,y+h*.32);
+    // 들리는 방출원. 순간 신호는 대역 색으로 밝게 띄워 "방금 뭔가 했다"를 드러낸다.
+    let bx=x+8;
+    ctx.font='700 8px ui-monospace,SFMono-Regular,Menlo,monospace';
+    for(const band of (top.emBands||[]).slice(0,5)){
+      const meta=EM_BANDS[band.bandId];if(!meta)continue;
+      const label=`${meta.short}${band.transient?'◆':''}`,tw=ctx.measureText(label).width+10;
+      if(bx+tw>x+w-8)break;
+      ctx.fillStyle=band.transient?meta.color:'rgba(150,140,185,.8)';
+      ctx.fillText(label,bx,y+h*.74);bx+=tw;
+    }
+    if((top.emClassifyQuality||0)<SENSOR_CONFIG.emClassifyMinQuality){ctx.fillStyle='rgba(150,140,180,.7)';ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillText('분류 불충분',bx+4,y+h*.74);}
+    ctx.restore();
+  }
   function drawLockedEoIdentificationPanel(ctx,w,h,track,target){const stage=track?.eoIdentificationStage||0;if(stage>=4){drawShipIndicator(ctx,w,h,target,{title:'락온 표적 · 완전 함형 분석',target:true,distanceM:track.rangeEstimateM,showShield:(track.shieldId?.existence||0)>=SHIELD_ID_CONFIG.existenceGate});return;}if(stage<=0){drawSensorTrackPanel(ctx,w,h,track,target);return;}ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(255,221,145,.92)';ctx.font='700 10px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText(`락온 표적 · ${EO_IDENTIFICATION_LABELS[stage]}`,9,15);const previewH=Math.max(72,h-91);drawObservedDiagramInRect(ctx,target,track,stage,8,27,w-16,previewH);ctx.fillStyle='rgba(6,17,24,.92)';ctx.fillRect(0,h-57,w,57);ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillStyle='rgba(151,181,195,.78)';ctx.fillText(`EO 각크기 ${(track.eoAngularMrad||0).toFixed(3)}mrad`,10,h-39);ctx.fillText(`분석 ${Math.round((track.eoIdentificationQuality||0)*100)}% · LRF ${Math.round((track.eoLrfQuality||0)*100)}%`,10,h-23);ctx.textAlign='right';const lockedShield=shieldIdentificationReadout(track);ctx.fillStyle=lockedShield.tone==='known'?'#82dcff':lockedShield.tone==='hint'?'rgba(180,150,255,.85)':'rgba(166,188,198,.68)';ctx.fillText(lockedShield.known?`${lockedShield.headline}${lockedShield.detail?' · '+lockedShield.detail:''} · ${lockedShield.source}`:lockedShield.headline,w-10,h-23);ctx.fillStyle='#e7f6fb';ctx.fillText(sensorTrackLabel(track),w-10,h-39);}
   let aidLastDrawAt=0;const STATUS_PANEL_INTERVAL_MS=1000/8;
   function updateCombatAidPanelLabel(mode){
@@ -4961,17 +5000,77 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   }
 
 
+  // ── ESM 시각화 (EM-E) ────────────────────────────────────────────────────────
+  // EM은 거리를 주지 않는다. 그래서 점으로 찍지 않고 방위 부채꼴로 그린다.
+  // 신호가 강해질수록 부채꼴이 좁아지고, EO/IR이 접촉을 잡으면 정밀 접촉에 자리를 넘긴다.
+  function emContactTracks(ship,limit=6){if(!ship||modulePower(ship,'esm')<=.05)return [];return Object.values(ship.sensorTracks||{}).filter(tr=>tr&&(tr.emQuality||0)>SENSOR_CONFIG.emDetectFloor&&Number.isFinite(tr.emBearing)).sort((a,b)=>(b.emQuality||0)-(a.emQuality||0)).slice(0,limit);}
+  function drawEmStrengthSector(ctx,cx,cy,inner,outer,mid,half,strength){
+    strength=clamp01(strength);const r=Math.round(150+strength*80),b=Math.round(200+strength*55);
+    const gradient=ctx.createRadialGradient(cx,cy,inner,cx,cy,outer);
+    gradient.addColorStop(0,`rgba(${r},110,${b},${(.05+strength*.08).toFixed(3)})`);
+    gradient.addColorStop(.58,`rgba(${r},120,${b},${(.12+strength*.22).toFixed(3)})`);
+    gradient.addColorStop(1,`rgba(${Math.min(235,r+30)},150,${Math.min(255,b+20)},${(.22+strength*.44).toFixed(3)})`);
+    drawAnnularSector(ctx,cx,cy,inner,outer,mid-half,mid+half,gradient);
+  }
+  // 전장 화면의 ESM 스트로브. EO/IR이 못 잡은 표적만 그린다 — 정밀 접촉이 있으면 그쪽이 이긴다.
+  function drawEsmBearingStrobe(ctx,ship,track){
+    if(!track?.emOnly||!Number.isFinite(track.emBearing))return;
+    const own=worldToScreen(ship.x,ship.y),half=Math.max(.04,track.emBearingHalfRad||.35),strength=clamp01(track.emQuality||0);
+    const reach=Math.hypot(battleCanvas.width,battleCanvas.height);
+    ctx.save();
+    drawEmStrengthSector(ctx,own.x,own.y,42,reach*.62,track.emBearing,half,strength);
+    ctx.strokeStyle=`rgba(196,158,255,${(.28+strength*.44).toFixed(3)})`;ctx.lineWidth=1.2;ctx.setLineDash([6,6]);
+    for(const edge of [track.emBearing-half,track.emBearing+half]){ctx.beginPath();ctx.moveTo(own.x+Math.cos(edge)*42,own.y+Math.sin(edge)*42);ctx.lineTo(own.x+Math.cos(edge)*reach*.62,own.y+Math.sin(edge)*reach*.62);ctx.stroke();}
+    ctx.setLineDash([]);
+    const labelR=Math.min(reach*.34,180+strength*120),lx=own.x+Math.cos(track.emBearing)*labelR,ly=own.y+Math.sin(track.emBearing)*labelR;
+    ctx.fillStyle='rgba(214,196,255,.94)';ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';
+    const bands=(track.emBands||[]).slice(0,3).map(b=>b.short).join('·');
+    ctx.fillText(`ESM ${Math.round(((track.emBearing*180/Math.PI)+360)%360)}° ±${Math.round(half*180/Math.PI)}°`,lx,ly);
+    ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(190,170,240,.82)';
+    ctx.fillText(bands?`${bands} · 거리 미상`:'거리 미상',lx,ly+11);
+    ctx.restore();
+  }
   function irContactTracks(ship,limit=6){if(!ship||modulePower(ship,'ir')<=.05)return [];return Object.values(ship.sensorTracks||{}).filter(tr=>tr?.detected&&tr.irCueActive).sort((a,b)=>(b.irCueStrength||0)-(a.irCueStrength||0)).slice(0,limit);}
   function drawAnnularSector(ctx,cx,cy,innerR,outerR,start,end,fill,stroke=null){ctx.beginPath();ctx.arc(cx,cy,outerR,start,end);ctx.arc(cx,cy,innerR,end,start,true);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}}
   function drawIrSearchPanel(ctx,w,h,ship){ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(255,221,145,.92)';ctx.font='700 10px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('IR 탐지 패널',9,15);ctx.fillStyle='rgba(7,20,29,.86)';ctx.fillRect(8,28,w-16,h-39);ctx.strokeStyle='rgba(255,209,102,.25)';ctx.strokeRect(8,28,w-16,h-39);const cx=w/2,cy=Math.round(h*.54),outer=Math.max(34,Math.min(w,h)*.27),inner=outer*.4;ctx.save();ctx.strokeStyle='rgba(145,172,186,.24)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,outer,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*(inner-4),cy+Math.sin(a)*(inner-4));ctx.lineTo(cx+Math.cos(a)*(outer+4),cy+Math.sin(a)*(outer+4));ctx.stroke();}const contacts=irContactTracks(ship,8);ctx.globalCompositeOperation='lighter';for(const tr of contacts)drawIrStrengthSector(ctx,cx,cy,inner,outer,tr.bearingEstimate||0,Math.max(.05,tr.irBearingHalfRad||.12),tr.irCueStrength||0);ctx.restore();ctx.fillStyle='rgba(255,210,145,.86)';ctx.font='700 8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.fillText(contacts.length?`${contacts.length} IR CONTACT`:'NO IR CONTACT',cx,cy);ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(214,198,142,.8)';ctx.fillText('예상 방위 전체를 채우고 밝기·중심 열점으로 열원 세기 표시',cx,h-17);if(contacts.length){const strongest=contacts[0],bearing=((strongest.bearingEstimate||0)*180/Math.PI+360)%360,strength=clamp01(strongest.irCueStrength||0);ctx.textAlign='left';ctx.fillStyle='rgba(151,181,195,.78)';ctx.fillText('최대 열원',18,46);ctx.textAlign='right';ctx.fillStyle='#e7f6fb';ctx.fillText(`${bearing.toFixed(0).padStart(3,'0')}° ±${Math.round(strongest.irBearingHalfDeg||0)}°`,w-18,46);ctx.fillStyle='rgba(48,61,68,.88)';ctx.fillRect(18,56,w-36,8);const g=ctx.createLinearGradient(18,0,w-18,0);g.addColorStop(0,'rgba(137,74,35,.7)');g.addColorStop(.6,'rgba(255,145,51,.92)');g.addColorStop(1,'rgba(255,244,173,1)');ctx.fillStyle=g;ctx.fillRect(18,56,(w-36)*strength,8);ctx.strokeStyle='rgba(255,213,145,.46)';ctx.strokeRect(18.5,56.5,w-37,7);}}
   function sensorTrackLabel(track){if(!track)return '신호 없음';const range=track.rangeEstimateM>=1000?`${(track.rangeEstimateM/1000).toFixed(track.eoLrfLocked?2:1)}km`:`${Math.round(track.rangeEstimateM)}m`,unc=track.rangeUncertaintyM>=1000?`${(track.rangeUncertaintyM/1000).toFixed(1)}km`:`${Math.round(track.rangeUncertaintyM)}m`,source=track.eoLrfLocked?`${track.source} FIX`:track.source;return `${source} · ${range} ±${unc}`;}
   function sensorContactScreenPoint(track){const raw=worldToScreen(track.estimatedX,track.estimatedY),rightReserve=battleCanvas.width>900?Math.min(560,battleCanvas.width*.42):50,minX=46,maxX=Math.max(minX,battleCanvas.width-rightReserve),minY=52,maxY=Math.max(minY,battleCanvas.height-76),x=clamp(raw.x,minX,maxX),y=clamp(raw.y,minY,maxY);return {x,y,rawX:raw.x,rawY:raw.y,clamped:Math.abs(x-raw.x)>1||Math.abs(y-raw.y)>1};}
   function drawSensorContact(ctx,track,target){if(!track?.detected)return;const p=sensorContactScreenPoint(track),q=clamp01(track.lockQuality),r=10+q*8;ctx.save();ctx.strokeStyle=track.source.includes('EO')?'rgba(123,224,255,.9)':'rgba(255,151,97,.92)';ctx.fillStyle='rgba(6,14,20,.68)';ctx.lineWidth=1.4;if(track.rangeQuality<.25||p.clamped){const own=worldToScreen(battle.player.x,battle.player.y);ctx.setLineDash([4,7]);ctx.globalAlpha=.42;ctx.beginPath();ctx.moveTo(own.x,own.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.globalAlpha=1;}ctx.setLineDash(track.rangeQuality<.25?[5,5]:[]);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(p.x-r-6,p.y);ctx.lineTo(p.x-r+1,p.y);ctx.moveTo(p.x+r-1,p.y);ctx.lineTo(p.x+r+6,p.y);ctx.moveTo(p.x,p.y-r-6);ctx.lineTo(p.x,p.y-r+1);ctx.moveTo(p.x,p.y+r-1);ctx.lineTo(p.x,p.y+r+6);ctx.stroke();ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.fillStyle=ctx.strokeStyle;ctx.fillText(sensorTrackLabel(track),p.x,p.y+r+14);ctx.restore();}
-  function drawSensorTrackPanel(ctx,w,h,track,target){ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(255,221,145,.92)';ctx.font='700 10px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('락온 표적 · 센서 추적',9,15);ctx.fillStyle='rgba(7,20,29,.86)';ctx.fillRect(8,28,w-16,h-39);ctx.strokeStyle='rgba(255,209,102,.25)';ctx.strokeRect(8,28,w-16,h-39);const rows=[['접촉',track?.source||'없음'],['추정 거리',track?sensorTrackLabel(track).split(' · ')[1]:'—'],['방위 품질',`${Math.round((track?.bearingQuality||0)*100)}%`],['거리 품질',`${Math.round((track?.rangeQuality||0)*100)}%`],['속도 품질',`${Math.round((track?.velocityQuality||0)*100)}%`],['관측 지연',track?`${Math.round((track.trackAgeS||0)*1000)}ms`:'—'],['위치 오차',track?`±${Math.round(track.positionUncertaintyM||0)}m`:'—'],['형상 품질',`${Math.round((track?.shapeQuality||0)*100)}%`],['IR 방위',track?.irCueActive?`±${Math.round(track.irBearingHalfDeg||0)}°`:'—'],['CS',track?`${track.csM2.toFixed(0)}m²`:'—'],['IR',track?track.irSignature.toFixed(2):'—']];ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';let y=48;for(const [k,v] of rows){ctx.textAlign='left';ctx.fillStyle='rgba(151,181,195,.78)';ctx.fillText(k,18,y);ctx.textAlign='right';ctx.fillStyle='#e7f6fb';ctx.fillText(v,w-18,y);y+=18;}ctx.textAlign='center';ctx.fillStyle='rgba(214,198,142,.8)';ctx.font='8px system-ui';ctx.fillText(track?.source==='IR'?'IR 단독 접촉 · 정확한 거리는 아직 확정되지 않음':'EO 정보가 축적되면 함선 형상과 내부 상태가 표시됨',w/2,h-17);}
+  // 탐지 → 분류 → 식별 → 표적. EM 단독은 분류까지만 갈 수 있고 표적화는 막힌다.
+  const CONTACT_STAGE_LABELS=Object.freeze(['미탐지','탐지','분류','식별','표적']);
+  function contactStageForTrack(track){
+    if(!track?.detected)return 0;
+    const stage=track.eoIdentificationStage||0;
+    if(stage>=3)return 4;
+    if(stage>=1)return 3;
+    if((track.emClassifyQuality||0)>=SENSOR_CONFIG.emClassifyMinQuality||(track.irQuality||0)>.2)return 2;
+    return 1;
+  }
+  function drawContactStageIndicator(ctx,x,y,w,track){
+    const stage=contactStageForTrack(track),blocked=!!track?.emOnly;
+    ctx.save();ctx.font='700 8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+    const cellW=Math.max(28,(w-6)/4);
+    for(let i=1;i<=4;i++){
+      const on=stage>=i,cx=x+(i-1)*cellW,barY=y;
+      // 표적 단계는 EM 단독이면 도달 자체가 불가능하므로 잠금색으로 표시한다.
+      const lockedTarget=i===4&&blocked;
+      ctx.fillStyle=lockedTarget?'rgba(255,120,120,.24)':on?'rgba(126,227,255,.34)':'rgba(120,140,155,.12)';
+      ctx.fillRect(cx,barY,cellW-4,3);
+      ctx.fillStyle=lockedTarget?'rgba(255,150,150,.9)':on?'rgba(190,232,248,.94)':'rgba(130,150,165,.6)';
+      ctx.fillText(CONTACT_STAGE_LABELS[i],cx,barY+11);
+    }
+    if(blocked){ctx.textAlign='right';ctx.fillStyle='rgba(255,150,150,.92)';ctx.fillText('EM 단독 · 자동사격 불가',x+w,y+11);}
+    ctx.restore();
+    return y+20;
+  }
+  function drawSensorTrackPanel(ctx,w,h,track,target){ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(255,221,145,.92)';ctx.font='700 10px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('락온 표적 · 센서 추적',9,15);drawContactStageIndicator(ctx,9,h-14,w-18,track);ctx.fillStyle='rgba(7,20,29,.86)';ctx.fillRect(8,28,w-16,h-39);ctx.strokeStyle='rgba(255,209,102,.25)';ctx.strokeRect(8,28,w-16,h-39);const rows=[['접촉',track?.source||'없음'],['추정 거리',track?sensorTrackLabel(track).split(' · ')[1]:'—'],['방위 품질',`${Math.round((track?.bearingQuality||0)*100)}%`],['거리 품질',`${Math.round((track?.rangeQuality||0)*100)}%`],['속도 품질',`${Math.round((track?.velocityQuality||0)*100)}%`],['관측 지연',track?`${Math.round((track.trackAgeS||0)*1000)}ms`:'—'],['위치 오차',track?`±${Math.round(track.positionUncertaintyM||0)}m`:'—'],['형상 품질',`${Math.round((track?.shapeQuality||0)*100)}%`],['IR 방위',track?.irCueActive?`±${Math.round(track.irBearingHalfDeg||0)}°`:'—'],['CS',track?`${track.csM2.toFixed(0)}m²`:'—'],['IR',track?track.irSignature.toFixed(2):'—']];ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';let y=48;for(const [k,v] of rows){ctx.textAlign='left';ctx.fillStyle='rgba(151,181,195,.78)';ctx.fillText(k,18,y);ctx.textAlign='right';ctx.fillStyle='#e7f6fb';ctx.fillText(v,w-18,y);y+=18;}ctx.textAlign='center';ctx.fillStyle='rgba(214,198,142,.8)';ctx.font='8px system-ui';ctx.fillText(track?.source==='IR'?'IR 단독 접촉 · 정확한 거리는 아직 확정되지 않음':'EO 정보가 축적되면 함선 형상과 내부 상태가 표시됨',w/2,h-17);}
 
   function drawBattle(){
     const ctx=cctx,w=battleCanvas.width,h=battleCanvas.height;ctx.clearRect(0,0,w,h);const g=ctx.createRadialGradient(w*.52,h*.48,0,w*.52,h*.48,w*.78);g.addColorStop(0,'#0b1f31');g.addColorStop(1,'#010306');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);if(!battle){document.getElementById('combatAid').classList.remove('visible');document.getElementById('targetAid').classList.remove('visible');ctx.fillStyle='#91a9bb';ctx.font='20px system-ui';ctx.textAlign='center';ctx.fillText('설계 화면에서 출격',w/2,h/2);return;}computeCamera();ctx.fillStyle='rgba(255,255,255,.74)';for(const s of stars){const p=worldToScreen(s.x,s.y);if(p.x>-5&&p.x<w+5&&p.y>-5&&p.y<h+5)ctx.fillRect(p.x,p.y,s.r,s.r);}const p=battle.player;
-    const route=p.waypoints||[];if(route.length){const ps=worldToScreen(p.x,p.y);ctx.strokeStyle='rgba(105,212,255,.68)';ctx.lineWidth=1.5;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(ps.x,ps.y);for(const wp of route){const d=worldToScreen(wp.x,wp.y);ctx.lineTo(d.x,d.y);}ctx.stroke();ctx.setLineDash([]);for(let i=0;i<route.length;i++){const d=worldToScreen(route[i].x,route[i].y),r=i===0?12:9;ctx.strokeStyle=i===0?'rgba(128,229,255,.95)':'rgba(105,212,255,.62)';ctx.lineWidth=i===0?1.8:1.2;ctx.beginPath();ctx.arc(d.x,d.y,r,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(d.x-r-4,d.y);ctx.lineTo(d.x+r+4,d.y);ctx.moveTo(d.x,d.y-r-4);ctx.lineTo(d.x,d.y+r+4);ctx.stroke();ctx.fillStyle='rgba(209,244,255,.86)';ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(i+1),d.x,d.y);}}updateRouteControls();drawShip(p);for(const e of battle.enemies){const tr=sensorTrackFor(p,e.id);if(tr?.detected)drawObservedTarget(ctx,e,tr);}
+    const route=p.waypoints||[];if(route.length){const ps=worldToScreen(p.x,p.y);ctx.strokeStyle='rgba(105,212,255,.68)';ctx.lineWidth=1.5;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(ps.x,ps.y);for(const wp of route){const d=worldToScreen(wp.x,wp.y);ctx.lineTo(d.x,d.y);}ctx.stroke();ctx.setLineDash([]);for(let i=0;i<route.length;i++){const d=worldToScreen(route[i].x,route[i].y),r=i===0?12:9;ctx.strokeStyle=i===0?'rgba(128,229,255,.95)':'rgba(105,212,255,.62)';ctx.lineWidth=i===0?1.8:1.2;ctx.beginPath();ctx.arc(d.x,d.y,r,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(d.x-r-4,d.y);ctx.lineTo(d.x+r+4,d.y);ctx.moveTo(d.x,d.y-r-4);ctx.lineTo(d.x,d.y+r+4);ctx.stroke();ctx.fillStyle='rgba(209,244,255,.86)';ctx.font='9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(i+1),d.x,d.y);}}updateRouteControls();drawShip(p);
+    // ESM 스트로브를 먼저 깔아 정밀 접촉이 그 위에 오게 한다. EO/IR이 잡으면 emOnly가 풀려 자동으로 사라진다.
+    for(const e of battle.enemies){const tr=sensorTrackFor(p,e.id);if(tr)drawEsmBearingStrobe(ctx,p,tr);}
+    for(const e of battle.enemies){const tr=sensorTrackFor(p,e.id);if(tr?.detected)drawObservedTarget(ctx,e,tr);}
     const target=getShipById(p.lockId),lockTrack=target?sensorTrackFor(p,target.id):null;if(target?.alive&&lockTrack?.detected){const s=sensorContactScreenPoint(lockTrack),observedBox=projectedShipScreenBox(target,lockTrack),r=Math.max(18,Math.max(observedBox.w,observedBox.h)*.52)+22;ctx.strokeStyle='#ffd166';ctx.lineWidth=2;const q=13;for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ctx.beginPath();ctx.moveTo(s.x+sx*r,s.y+sy*(r-q));ctx.lineTo(s.x+sx*r,s.y+sy*r);ctx.lineTo(s.x+sx*(r-q),s.y+sy*r);ctx.stroke();}ctx.fillStyle='#ffd166';ctx.font='10px ui-monospace';ctx.textAlign='center';ctx.fillText(`${sensorTrackLabel(lockTrack)} · LOCK ${Math.round(lockTrack.lockQuality*100)}%`,s.x,s.y+r+16);}
     for(const e of effects){if(e.type==='energyBlast'){const s=worldToScreen(e.x,e.y),life=clamp01(e.t/(e.maxT||.22)),r=(1-life)*18+4;ctx.save();ctx.globalAlpha=life;ctx.strokeStyle='#ffb357';ctx.fillStyle='rgba(255,83,35,.22)';ctx.beginPath();ctx.arc(s.x,s.y,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}}
     for(const pr of projectiles){const s=worldToScreen(pr.x,pr.y),vm=Math.hypot(pr.vx,pr.vy)||1,visual=projectileVisualDefinition(pr),tail=worldToScreen(pr.x-pr.vx/vm*visual.tailLength,pr.y-pr.vy/vm*visual.tailLength);ctx.save();ctx.strokeStyle=pr.team==='player'?visual.playerColor:visual.enemyColor;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=visual.shadowBlur;ctx.lineWidth=visual.lineWidth;ctx.beginPath();ctx.moveTo(tail.x,tail.y);ctx.lineTo(s.x,s.y);ctx.stroke();if(visual.headRadius>0){ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(s.x,s.y,visual.headRadius,0,Math.PI*2);ctx.fill();}ctx.restore();}
@@ -5213,6 +5312,9 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   // 향후 레지스트리 패치에서 특정 계층의 회귀 원인을 빠르게 분리할 때 사용하며, 게임 동작에는 관여하지 않는다.
   window.__SPACEFRAME_TEST_RUNNERS__=Object.freeze({stopLoop:()=>{cancelAnimationFrame(raf);return true;},signature:()=>runSignatureGeometrySelfTest(),combat:()=>runCombatCollisionOptimizationSelfTest(),thermal:()=>runThermalFrameworkSelfTest(),pipe:()=>runPipeStage6SelfTest(),shieldKinetic:()=>runShieldKineticInteractionSelfTest(),shieldRecovery:()=>runShieldRecoveryThermalSelfTest(),structure:()=>runStructuralToolModeSelfTest(),designValidation:()=>({player:validateDesign(defaultDesign()),enemy:validateDesign(defaultEnemyDesign()),schema:designPairPayload().schema}),perf:()=>runPerfHotpathSelfTest(),
     // 내부 스코프는 IIFE에 갇혀 있어 개발 중 값 확인이 안 된다. EM 계열 튜닝용 읽기 전용 프로브.
+    // 개발 확인용: 현재 설계에 모듈을 얹는다. 캔버스 합성 입력으로는 배치가 되지 않아
+    // ESM 화면을 눈으로 확인할 때 쓴다.
+    installModule:(type='esm',prefer='front')=>{const before=(design.modules||[]).length;addDefaultBoundarySensor(design,type,prefer);drawBuild();return {type,added:(design.modules||[]).length-before,total:(design.modules||[]).filter(m=>m.type===type).length};},
     emProbe:(opts={})=>{const d=opts.design||cloneDesign(design);if(opts.armorMm!==undefined||opts.armorMaterial){for(const w of d.walls||[])if(w.kind==='armor'){syncArmorWall(w);w.layers=[{material:opts.armorMaterial||w.layers[0].material,thicknessMm:opts.armorMm!==undefined?opts.armorMm:w.layers[0].thicknessMm,gapMm:0}];syncArmorWall(w);}}
       let mm=0,walls=0;for(const w of d.walls||[]){if(w.kind!=='armor')continue;syncArmorWall(w);for(const l of w.layers||[])mm+=(Number(l.thicknessMm)||0)*((MATERIALS[l.material]?.density||7800)/7800);walls++;}
       const ship=createShip(`em-probe-${Math.random()}`,'EM PROBE',d,0,0,0,'player');syncShieldSystem(ship,true);syncPowerSystem(ship);
@@ -5586,6 +5688,54 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     battle=oldBattle;
     const all=results.every(q=>q.pass);
     return {version:'1.31.21',model:'shield-identification-d',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+  };
+
+  // EM-E: 표시 규칙. 무엇을 언제 그리고 언제 그리지 않는가를 고정한다.
+  window.__SPACEFRAME_ESM_DISPLAY_TEST__=()=>{
+    const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});
+    try{
+      const d=cloneDesign(design),anchor=d.modules.find(m=>m.type==='reactor')||{sx:SUB_W/2,sy:SUB_H/2};
+      d.modules.push(makeModule('esm',anchor.sx,anchor.sy,SUBDIV,SUBDIV));
+      const ship=createShip('e-disp','E DISP',d,0,0,0,'player');
+      syncPowerSystem(ship);ship.powerSystem.sensorFactor=1;
+      const mk=o=>Object.assign({targetId:'t',emBearing:0,emBearingHalfRad:.3,emQuality:.6,emBands:[{bandId:'reactor',short:'RCT',receivedMW:40,transient:false}],emClassifyQuality:.5,detected:true},o);
+
+      // ESM이 없으면 접촉 목록이 비어야 한다.
+      const noEsm=createShip('e-noesm','E NOESM',cloneDesign(design).modules?cloneDesign(design):cloneDesign(design),0,0,0,'player');
+      noEsm.sensorTracks={t:mk({})};
+      check('no-esm-no-contacts',emContactTracks(noEsm,5).length===0,{n:emContactTracks(noEsm,5).length});
+
+      ship.sensorTracks={t:mk({})};
+      check('esm-lists-contacts',emContactTracks(ship,5).length===1,{n:emContactTracks(ship,5).length});
+      // 방위를 모르는 트랙은 그릴 수 없으므로 목록에서 빠진다.
+      ship.sensorTracks={t:mk({emBearing:NaN})};
+      check('contacts-require-bearing',emContactTracks(ship,5).length===0,{});
+      // 약한 신호는 목록에 오르지 않는다.
+      ship.sensorTracks={t:mk({emQuality:0})};
+      check('weak-signal-excluded',emContactTracks(ship,5).length===0,{});
+
+      // 단계 인디케이터: EM 분류만으로는 '분류'까지, EO 식별이 붙어야 그 위로 간다.
+      check('stage-detect-only',contactStageForTrack({detected:true,emClassifyQuality:0,irQuality:0})===1,{s:contactStageForTrack({detected:true})});
+      check('stage-classified-by-em',contactStageForTrack({detected:true,emClassifyQuality:.9})===2,{});
+      check('stage-identified-by-eo',contactStageForTrack({detected:true,eoIdentificationStage:1})===3&&contactStageForTrack({detected:true,eoIdentificationStage:3})===4,{});
+      check('stage-zero-when-undetected',contactStageForTrack({detected:false,emClassifyQuality:1})===0,{});
+
+      // 전장 스트로브는 EM 단독일 때만 그린다 — EO/IR이 잡으면 정밀 접촉에 자리를 넘긴다.
+      // 실제 픽셀이 찍혔는지로 확인한다(함수 대입으로 감시하지 않는다).
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=240;
+      const ctx=canvas.getContext('2d'),oldBattle=battle;battle={player:ship,enemies:[],time:0};
+      const painted=()=>{const px=ctx.getImageData(0,0,canvas.width,canvas.height).data;let n=0;for(let i=3;i<px.length;i+=4)if(px[i]>0)n++;return n;};
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawEsmBearingStrobe(ctx,ship,mk({emOnly:false}));
+      const precisePixels=painted();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawEsmBearingStrobe(ctx,ship,mk({emOnly:true}));
+      const emOnlyPixels=painted();
+      battle=oldBattle;
+      check('strobe-only-for-em-only-tracks',precisePixels===0&&emOnlyPixels>0,{precisePixels,emOnlyPixels});
+    }catch(error){check('esm-display-runtime',false,{error:String(error?.stack||error)});}
+    const all=results.every(q=>q.pass);
+    return {version:'1.31.21',model:'esm-display-e',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
   syncMaterialControlButtons();setupToolbar();loadUiPreferences();{const loaded=loadDesigns();playerDesign=loaded.player;enemyDesignState=loaded.enemy;design=playerDesign;}setDesignSide('player');if(legacyIntegratedTurretsRemoved>0)showToast(`구형 2×2 통합 포탑 ${legacyIntegratedTurretsRemoved}개 제거 · S4 포탑으로 재설치 필요`);else if(legacyThermalPipesRemoved>0)showToast(`구형 열배관 ${legacyThermalPipesRemoved}개 제거 · 새 규격으로 재설치 필요`);else if(trunkWidthMigrationRemoved>0)showToast(`새 0.5m 폭과 충돌한 주배관 ${trunkWidthMigrationRemoved}개 제거 · 재배치 필요`);initDesignHistory();switchScene('build');updateBuildMetrics();updateSignatureOverlayUi();resizeCanvases();addLog('SPACEFRAME GRID PROTO 1.31.21 SENSOR-FCS-B1 정밀 추적·사격해','info');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
 })();
