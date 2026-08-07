@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#020508" />
-  <title>SPACEFRAME GRID PROTOTYPE 1.31.27</title>
+  <title>SPACEFRAME GRID PROTOTYPE 1.31.28</title>
   <style>
     :root{--bg:#020508;--text:#eaf7ff;--muted:#91aabb;--line:rgba(111,190,229,.35);--accent:#69d4ff;--danger:#ff7373}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -322,7 +322,7 @@
     <section id="buildScene" class="scene active" aria-label="함선 설계 화면">
       <canvas id="buildCanvas" aria-label="함선 설계 격자"></canvas>
       <div class="buildTop">
-        <div class="brand">SPACEFRAME<small id="designRoleLabel">ALLY HULL LAB · 112×64m · PROTO 1.31.27</small></div>
+        <div class="brand">SPACEFRAME<small id="designRoleLabel">ALLY HULL LAB · 112×64m · PROTO 1.31.28</small></div>
         <div class="designSwitch" aria-label="설계 함선 선택">
           <button id="editPlayer" class="active" data-side="player">아군 설계</button><button id="editEnemy" data-side="enemy">적함 설계</button>
         </div>
@@ -2048,9 +2048,12 @@
     capacitor:Object.freeze({id:'capacitor',label:'캐패시터',short:'CAP',color:'#ffd166',transientTauS:1.1}),
     fcs:Object.freeze({id:'fcs',label:'사격통제',short:'FCS',color:'#7ee3ff',transientTauS:1.6}),
     shield:Object.freeze({id:'shield',label:'보호막',short:'SHD',color:'#b78bff',transientTauS:2.4}),
-    weapon:Object.freeze({id:'weapon',label:'에너지 무장',short:'WPN',color:'#ff5c7a',transientTauS:.85})
+    weapon:Object.freeze({id:'weapon',label:'에너지 무장',short:'WPN',color:'#ff5c7a',transientTauS:.85}),
+    // 능동 레이더. 다른 대역이 새어나가는 신호인 것과 달리 이쪽은 의도적으로 쏘는
+    // 것이라 압도적으로 크다. 켜는 순간 상대 ESM에 가장 먼저, 가장 뚜렷하게 잡힌다.
+    radar:Object.freeze({id:'radar',label:'레이더',short:'RDR',color:'#5ce1d6',transientTauS:1.4})
   });
-  const EM_BAND_ORDER=Object.freeze(['reactor','capacitor','shield','fcs','weapon']);
+  const EM_BAND_ORDER=Object.freeze(['reactor','capacitor','shield','fcs','weapon','radar']);
   const EM_CONFIG=Object.freeze({
     // 지속 방출 계수 — 각 방출원의 물리량을 MW 등가 신호로 환산한다.
     reactorMWPerGenMW:.055,        // 2.4GW 만출력 반응로 ≈ 132 신호MW
@@ -2059,6 +2062,9 @@
     shieldMWPerUnitFull:26,        // 레이어 1기 만충 기준
     // 순간 방출 — 이벤트 MJ를 신호MW 피크로 환산한다. 짧지만 지속보다 훨씬 크게 튄다.
     weaponMWPerShotMJ:.62, shieldImpactMWPerMJ:.38, fcsLockMW:120, capacitorRechargeMWPerMJ:.22,
+    // 레이더 방출. 소비 전력에 비례하되 모드에 따라 크게 달라진다 — 탐색은 넓게 얇게,
+    // 단일표적추적(STT)은 한 방위에 집중해 쏘므로 훨씬 시끄럽다.
+    radarMWPerConsumedMW:1.35, radarSearchMul:1, radarTwsMul:1.45, radarSttMul:2.4,
     transientMaxEntries:24, transientCutoff:.5,
     // 투과 — 장갑이 아무리 두꺼워도 이 아래로는 절대 떨어지지 않는다.
     // 평균 장갑 두께(강철 등가 mm) 기준: 50mm→.99, 200mm→.96, 500mm 이상→.90 바닥.
@@ -2076,6 +2082,9 @@
     shield:Object.freeze({minMW:9,maxMW:78}),
     fcs:Object.freeze({minMW:4,maxMW:34}),
     weapon:Object.freeze({minMW:10,maxMW:150}),
+    // 능동 레이더. 운용 모드(탐색/추적/단일표적추적)에 따라 실제 방출이 크게 달라지므로
+    // 범위가 넓다. 대신 레이더 대역이 잡혔다는 사실 자체가 강한 정보다 — 상대가 켰다는 뜻이다.
+    radar:Object.freeze({minMW:90,maxMW:1400}),
     // 대역을 하나도 짚지 못했을 때. 후보가 손전등부터 주력함까지이므로 극단적으로
     // 넓고, 그 결과 거리는 사실상 만들어지지 않는다(쐐기로 남는다).
     unknown:Object.freeze({minMW:1,maxMW:9000})
@@ -2147,8 +2156,21 @@
     ship.emTransients=keep;
     return out;
   }
+  // 이 함선의 레이더가 지금 어느 모드로 쏘고 있는가. 방출 계산은 매 틱 × 관측자 ×
+  // 표적마다 불리므로 틱 단위로 캐시한다.
+  function radarEmissionMode(ship){
+    const st=radarSystemState(ship),now=battle?.time||0;
+    if(st.modeAtS===now&&st.modeCache)return st.modeCache;
+    let mode='SEARCH';
+    for(const tr of Object.values(ship?.sensorTracks||{})){
+      if(tr?.radarIlluminated){mode='STT';break;}
+      if(tr?.radarTrackClass==='TWS')mode='TWS';
+    }
+    st.modeAtS=now;st.modeCache=mode;
+    return mode;
+  }
   function emContinuousMWByBand(ship){
-    const out={reactor:0,capacitor:0,fcs:0,shield:0,weapon:0};
+    const out={reactor:0,capacitor:0,fcs:0,shield:0,weapon:0,radar:0};
     if(ship?.alive===false)return out;
     const sys=ship?.powerSystem;
     if(sys){
@@ -2177,6 +2199,16 @@
         if(pools>0)shieldMW+=units*EM_CONFIG.shieldMWPerUnitFull*(filled/pools);
       }
       out.shield=shieldMW;
+    }
+    // 레이더는 스스로 쏘는 유일한 장비다. 다른 대역이 "새어나가는" 신호인 반면 이쪽은
+    // 의도적인 방사라 압도적으로 크고, 끄면(EMCON) 즉시 완전히 침묵한다.
+    const radarFactor=ship?.design?radarOperationalFactor(ship):0;
+    if(radarFactor>0){
+      const profile=selectedModulePowerProfile('radar'),units=Math.max(0,modulePower(ship,'radar'));
+      const consumedMW=Math.max(0,Number(profile?.maxMW)||0)*units*radarFactor;
+      const mode=radarEmissionMode(ship);
+      const mul=mode==='STT'?EM_CONFIG.radarSttMul:mode==='TWS'?EM_CONFIG.radarTwsMul:EM_CONFIG.radarSearchMul;
+      out.radar=consumedMW*EM_CONFIG.radarMWPerConsumedMW*mul;
     }
     return out;
   }
@@ -4214,7 +4246,7 @@
     hideArmorJointMenu();activeDesignSide=side;design=side==='player'?playerDesign:enemyDesignState;selectedModuleId=null;selectedHullId=null;wallDraft=null;pipeDraft=null;pipeEraseDraft=null;moduleDragPreview=null;hullDragPreview=null;
     document.getElementById('editPlayer').classList.toggle('active',side==='player');
     document.getElementById('editEnemy').classList.toggle('active',side==='enemy');
-    document.getElementById('designRoleLabel').textContent=side==='player'?'ALLY HULL LAB · 112×64m · PROTO 1.31.27':'ENEMY HULL LAB · 112×64m · PROTO 1.31.27';
+    document.getElementById('designRoleLabel').textContent=side==='player'?'ALLY HULL LAB · 112×64m · PROTO 1.31.28':'ENEMY HULL LAB · 112×64m · PROTO 1.31.28';
     updateBuildMetrics();refreshToolHint();drawBuild();showToast(side==='player'?'아군 설계 편집':'적함 설계 편집');
   }
 
@@ -6287,7 +6319,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   window.__SPACEFRAME_PERF_H3_BENCHMARK__=(rounds=7,extraPipes=120)=>{const sample=mode=>{const times=[];for(let r=0;r<Math.max(1,rounds);r++){const d=defaultDesign(),seed=ensurePerfThermalPipe(d);for(let i=0;i<extraPipes;i++){const y=.25+(i%Math.max(1,Math.floor(SUB_H-.5))),x0=.25+((i*3)%Math.max(1,Math.floor(SUB_W-8))),x1=Math.min(SUB_W-.25,x0+6);d.pipes.push(makePipe(x0,y,x1,y,{pipeProfileId:i%5===0?'trunk':'distribution'}));}const base=thermalNetworkTemplate(d),pipe=seed,mid={x:(pipe.ax+pipe.bx)*.5,y:(pipe.ay+pipe.by)*.5},dir=pipeDirection(pipe),a={x:mid.x-dir.uy*.5,y:mid.y+dir.ux*.5},b={x:mid.x+dir.uy*.5,y:mid.y-dir.ux*.5};cutThermalPipesAlongSegment(d,a,b,THERMAL_PIPE_KINETIC_CUT_M,Infinity);const integration=thermalPipeIntegrationForDesign(d),t0=performance.now();if(mode==='fast')thermalNetworkTemplateRefreshPipes(d,base,integration);else thermalNetworkTemplate(d);times.push(performance.now()-t0);}times.sort((a,b)=>a-b);return {times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0};};const fast=sample('fast'),full=sample('full');return {version:'1.31.17',model:'pipe-only-thermal-template-refresh-v1',rounds,extraPipes,fast,full,speedup:full.medianMs/Math.max(1e-9,fast.medianMs)};};
   window.__SPACEFRAME_PERF_H4_BENCHMARK__=(rounds=7,extraPipes=200,hitCount=8)=>{const batchedTimes=[],sequentialTimes=[];let parity=true,lastBatched='',lastSequential='';for(let r=0;r<Math.max(1,rounds);r++){const base=defaultDesign(),created=[];for(let i=0;i<Math.max(hitCount,extraPipes);i++){const y=.35+(i%Math.max(1,Math.floor(SUB_H-1))),x0=.35+((i*5)%Math.max(1,Math.floor(SUB_W-10))),x1=Math.min(SUB_W-.35,x0+7),pipe=makePipe(x0,y,x1,y,{pipeProfileId:i%5===0?'trunk':'distribution'});base.pipes.push(pipe);created.push(pipe);}const cuts=created.slice(0,Math.max(1,Math.min(hitCount,created.length))).map(pipe=>{const mid={x:(pipe.ax+pipe.bx)*.5,y:(pipe.ay+pipe.by)*.5},dir=pipeDirection(pipe);return {a:{x:mid.x-dir.uy*.5,y:mid.y+dir.ux*.5},b:{x:mid.x+dir.uy*.5,y:mid.y-dir.ux*.5}};}),bat=createShip(`__perf_h4_bat_${r}`,'PERF-H4 BATCH',cloneDesign(base),0,0,0,'player'),seq=createShip(`__perf_h4_seq_${r}`,'PERF-H4 SEQ',cloneDesign(base),0,0,0,'player');let t0=performance.now();beginThermalPipeRefreshBatch();for(const cut of cuts){damageThermalPipesAlongSegment(bat,cut.a,cut.b,{kind:'kinetic',damageHp:Infinity,deferMerge:true});scheduleThermalPipeNetworkRefreshAfterDamage(bat,{stats:{}});}endThermalPipeRefreshBatch([bat]);batchedTimes.push(performance.now()-t0);t0=performance.now();for(const cut of cuts){damageThermalPipesAlongSegment(seq,cut.a,cut.b,{kind:'kinetic',damageHp:Infinity});refreshThermalPipeNetworkAfterDamage(seq);}sequentialTimes.push(performance.now()-t0);lastBatched=bat.heat.network.template.signature;lastSequential=seq.heat.network.template.signature;const physicalKey=ship=>{const integration=thermalPipeIntegrationForDesign(ship.design),edges=(ship.heat.network.template.edges||[]).map(q=>[q.source,q.a,q.b,+q.baseConductanceMW.toFixed(9),+(q.pipeCapacityMW||0).toFixed(9)]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),sectorEdges=(integration.sectorEdges||[]).map(q=>[Math.min(q.a,q.b),Math.max(q.a,q.b),+q.baseConductanceMW.toFixed(9),+(q.capacityMW||0).toFixed(9),q.routeCount||0]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),lengths={};for(const pipe of ship.design.pipes||[]){const id=inferPipeProfileId(pipe);lengths[id]=(lengths[id]||0)+pipeLengthSub(pipe);}return JSON.stringify({pipeCount:(ship.design.pipes||[]).length,lengths:Object.fromEntries(Object.entries(lengths).map(([k,v])=>[k,+v.toFixed(9)])),connectedCount:integration.connectedCount||0,routeCount:integration.routeCount||0,edgeCapacityMW:+(integration.edgeCapacityMW||0).toFixed(9),circulationCapMW:+(integration.circulationCapMW||0).toFixed(9),sectorEdges,edges,stored:+thermalNetworkTotalStored(ship.heat.network).toFixed(9)});};parity=parity&&physicalKey(bat)===physicalKey(seq);}batchedTimes.sort((a,b)=>a-b);sequentialTimes.sort((a,b)=>a-b);const summary=times=>({times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0});const batched=summary(batchedTimes),sequential=summary(sequentialTimes);return {version:'1.31.17',model:'same-tick-pipe-refresh-batch-v1',rounds,extraPipes,hitCount,batched:{...batched,finalSignature:lastBatched},sequential:{...sequential,finalSignature:lastSequential},speedup:sequential.medianMs/Math.max(1e-9,batched.medianMs),parity};};
   window.__SPACEFRAME_PERF_H5_BENCHMARK__=(rounds=7,rayCount=44,moduleCount=320,wallCount=220,groupsPerRound=500)=>{const makeDesign=()=>{const d=defaultDesign();for(let i=0;i<moduleCount;i++){const base=makeModule(i%6===0?'reactor':'ammo',2+(i*7)%(SUB_W-6),2+(i*11)%(SUB_H-6),1.25+(i%3)*.25,1.25+((i>>1)%3)*.25);base.id=`h5m${i}`;d.modules.push(base);}for(let i=0;i<wallCount;i++){const vertical=i%2===0,x=1+(i*13)%(SUB_W-3),y=1+(i*17)%(SUB_H-3),w=makeWall('bulkhead',vertical?'v':'h',x,y,3+(i%7),70,'bulkheadSteel');w.id=`h5w${i}`;d.walls.push(w);}fragmentCollisionCache.delete(d);return d;},sample=mode=>{const times=[],checks=[];for(let r=0;r<Math.max(1,rounds);r++){const d=makeDesign(),index=fragmentCollisionIndex(d),origin={x:SUB_W*.42,y:SUB_H*.51},dirs=[];for(let i=0;i<rayCount;i++){const a=-.72+(i+.5)/rayCount*1.44;dirs.push({x:Math.cos(a),y:Math.sin(a)});}let checksum=0,totalHits=0,totalMisses=0,t0=performance.now();for(let g=0;g<Math.max(1,groupsPerRound);g++){const group=mode==='shared'?createFragmentCandidateGroup(index):null;for(const dir of dirs){const maxDist=14/SUB_METERS;let boundaries,walls,modules,limit,rayEnd;if(group){const q=fragmentCandidateBundleForRay(group,origin,dir,maxDist);boundaries=q.boundaries;walls=q.bulkheads;modules=q.modules;limit=q.limit;rayEnd=q.rayEnd;}else{const end={x:origin.x+dir.x*maxDist,y:origin.y+dir.y*maxDist};boundaries=combatSpatialCandidates(index.spatial.boundaries,origin,end);const exit=nearestHullExitSub(index,origin,dir,maxDist,boundaries);limit=exit?Math.min(maxDist,exit.dist):maxDist;rayEnd={x:origin.x+dir.x*limit,y:origin.y+dir.y*limit};walls=combatSpatialCandidates(index.spatial.bulkheads,origin,rayEnd);modules=combatSpatialCandidates(index.spatial.modules,origin,rayEnd);}let wallHits=0,moduleHits=0;for(const w of walls){const e=wallEndpointsSub(w),hit=segmentIntersection(origin.x,origin.y,rayEnd.x,rayEnd.y,e.x1,e.y1,e.x2,e.y2);if(hit&&hit.t>1e-5&&hit.t<1-1e-5)wallHits++;}for(const m of modules){const q=rayRectIntervalSub(origin,dir,m,limit);if(q&&q.entry<limit-1e-5)moduleHits++;}checksum+=boundaries.length*3+wallHits*5+moduleHits*7;}if(group){totalHits+=group.cellCacheHits;totalMisses+=group.cellCacheMisses;}}times.push(performance.now()-t0);checks.push({checksum,hits:totalHits,misses:totalMisses});}times.sort((a,b)=>a-b);return {times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0,checks};},shared=sample('shared'),legacy=sample('legacy'),parity=shared.checks.every((q,i)=>q.checksum===legacy.checks[i].checksum);return {version:'1.31.17',model:'fragment-group-shared-spatial-cell-cache-v1',rounds,rayCount,moduleCount,wallCount,groupsPerRound,shared,legacy,speedup:legacy.medianMs/Math.max(1e-9,shared.medianMs),parity};};
-  window.__SPACEFRAME_SIGNATURE_TEST__=()=>{const g=designSignatureGeometrySolution(design);return {version:'1.31.17',model:'live-hull-projection+directional-facet-rcs-v1',radarIntegrated:false,config:SIGNATURE_GEOMETRY_CONFIG,current:{tiles:g.tiles.length,facets:g.facets.length,corners:g.corners.length,externalModules:g.modules.length,csMin:g.csMin,csMax:g.csMax,rcsMin:g.rcsMin,rcsMax:g.rcsMax},run:runSignatureGeometrySelfTest(),benchmark:signatureGeometryBenchmark(design,5)};};
+  window.__SPACEFRAME_SIGNATURE_TEST__=()=>{const g=designSignatureGeometrySolution(design);return {version:'1.31.28',model:'live-hull-projection+directional-facet-rcs-v1',radarIntegrated:true,config:SIGNATURE_GEOMETRY_CONFIG,current:{tiles:g.tiles.length,facets:g.facets.length,corners:g.corners.length,externalModules:g.modules.length,csMin:g.csMin,csMax:g.csMax,rcsMin:g.rcsMin,rcsMax:g.rcsMax},run:runSignatureGeometrySelfTest(),benchmark:signatureGeometryBenchmark(design,5)};};
   window.__SPACEFRAME_COMBAT_OPT_TEST__=()=>({version:'1.31.17',model:'hybrid-grid-candidate-index+fragment-group-shared-cell-cache+internal-entry-continuity+frame-batched-pipe-refresh',cellSub:4,smallSetFallback:28,run:runCombatCollisionOptimizationSelfTest(),benchmark:combatCollisionCandidateBenchmark(design,1600),synthetic:combatCollisionSyntheticBenchmark(2400,180,120),runtime:battle?{time:battle.time,projectiles:projectiles.length,playerTraces:battle.player?.combatTraces?.length||0,enemyTraces:battle.enemies?.reduce((a,q)=>a+(q.combatTraces?.length||0),0)||0,lastPlayerTrace:battle.player?.combatTraces?.[0]?.stats||null,lastEnemyTrace:battle.enemies?.find(q=>q.combatTraces?.length)?.combatTraces?.[0]?.stats||null}:null});
   window.__SPACEFRAME_SHIELD_TEST__=()=>{const ammo=AMMUNITION.tungstenSabot,state={modelId:'kineticPenetrator',ammo,massKg:ammo.penetratorMassKg,speedMps:ammo.muzzleVelocityMps,integrity:1,yawRad:0,deformation:0,penetrationRhaMm:ammo.referencePenetrationRhaMm,energyMJ:ammo.referenceEnergyMJ},profiles={};for(const size of ['S1','S2','S3']){const p=SHIELD_SIZE_CLASSES[size],interaction=shieldKineticInteractionState(state,{rigidity:p.rigidity},1,1,1,p.throughputMJPerModule,0,p.rigidity),post=shieldKineticPostLeakState(state,state.energyMJ*(1-interaction.absorbFraction),interaction);const thresholdMJ=shieldHardeningThresholdMJ({rigidity:p.rigidity},p.throughputMJPerModule,1,1,p.rigidity),costMultiplier=shieldHardeningCostMultiplier(state.energyMJ,thresholdMJ);profiles[size]={throughputMJ:p.throughputMJPerModule,rigidity:p.rigidity,leakChance:interaction.leakChance,absorbFraction:interaction.absorbFraction,postLeakSpeedMps:post.speedMps,postLeakPenetrationRhaMm:post.penetrationRhaMm,piercingStress:interaction.piercingStress,hardeningThresholdMJ:thresholdMJ,stoppedStorageCostMJ:state.energyMJ*costMultiplier*STANDARD_SHIELD.kineticStorageCostScale,leakStorageCostMJ:state.energyMJ*interaction.absorbFraction*costMultiplier*STANDARD_SHIELD.kineticStorageCostScale};}return {version:'1.31.17',model:'kinetic-shield-v1.3-global-collapse-restart-lock',recoveryThermal:runShieldRecoveryThermalSelfTest(),ammo:{id:ammo.id,caliberMm:ammo.caliberMm,penetratorDiameterMm:ammo.penetratorDiameterMm,penetratorLengthMm:ammo.penetratorLengthMm,penetratorMassKg:ammo.penetratorMassKg,energyMJ:ammo.referenceEnergyMJ},profiles,sequences:{S3S2:shieldKineticNominalSequence(state,['S3','S2']),S3S2S1:shieldKineticNominalSequence(state,['S3','S2','S1']),S2S1:shieldKineticNominalSequence(state,['S2','S1'])},monteCarlo:{S1:shieldKineticMonteCarlo(['S1'],12000,0x51a1),S2:shieldKineticMonteCarlo(['S2'],12000,0x52a2),S3:shieldKineticMonteCarlo(['S3'],12000,0x53a3),S3S2:shieldKineticMonteCarlo(['S3','S2'],18000,0x5320)},run:runShieldKineticInteractionSelfTest};};
   window.__SPACEFRAME_STRUCTURE_TEST__=()=>({version:'1.31.17',activeTool,activeToolGroup,family:structuralToolFamily(),wallEraseDraft:wallEraseDraft?{kind:wallEraseDraft.kind,x:wallEraseDraft.x,y:wallEraseDraft.y}:null,run:runStructuralToolModeSelfTest});
@@ -6299,9 +6331,9 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
   window.__SPACEFRAME_REGISTRY_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),registered=Object.keys(MODULE_TYPE_REGISTRY),expected=[...MODULE_INSTALL_TYPES];check('registry-keys',expected.every(id=>registered.includes(id))&&registered.every(id=>expected.includes(id)),{registered,expected});for(const id of expected){const def=moduleTypeDefinition(id),selected=selectedModuleProfile(id),foot=moduleFootprintSub(id),power=selectedModulePowerProfile(id);check(`definition-${id}`,!!def&&def.id===id);check(`profile-${id}`,!!selected&&Number.isFinite(Number(selected.mass))&&Number.isFinite(Number(selected.hp)),{profileId:selected?.id||null});check(`footprint-${id}`,foot.sw>0&&foot.sh>0,{foot});check(`capabilities-${id}`,Array.isArray(def?.capabilities));if(id!=='reactor')check(`power-${id}`,!!power&&Number.isFinite(power.idleMW)&&Number.isFinite(power.maxMW),{power});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),before=d.modules.map(m=>({type:m.type,sx:m.sx,sy:m.sy,sw:m.sw,sh:m.sh,mass:moduleMassTonnes(m),hp:m.maxHp,power:modulePowerProfile(m)})),after=round.modules.map(m=>({type:m.type,sx:m.sx,sy:m.sy,sw:m.sw,sh:m.sh,mass:moduleMassTonnes(m),hp:m.maxHp,power:modulePowerProfile(m)}));check('default-roundtrip',JSON.stringify(before)===JSON.stringify(after),{beforeCount:before.length,afterCount:after.length});const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),single=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),twin=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'});for(const [name,m] of [['empty',empty],['single',single],['twin',twin]]){const p=gunProfileForModule(m);check(`turret-${name}-mass`,Math.abs(moduleMassTonnes(m)-p.mass)<1e-9,{actual:moduleMassTonnes(m),expected:p.mass});check(`turret-${name}-hp`,Math.abs(m.maxHp-p.hp)<1e-9,{actual:m.maxHp,expected:p.hp});check(`turret-${name}-power`,JSON.stringify(modulePowerProfile(m))===JSON.stringify(powerProfileFromResolvedProfile(p,'gun')),{actual:modulePowerProfile(m)});}check('stale-gun-footprint-removed',typeof MODULE_FOOTPRINTS==='undefined');check('legacy-gun-power-removed',!Object.prototype.hasOwnProperty.call(POWER_PROFILES,'gun'));check('legacy-heatsink-power-removed',!Object.prototype.hasOwnProperty.call(POWER_PROFILES,'heatsink'));const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-type-registry-foundation-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,registry:MODULE_TYPE_REGISTRY};};
   window.__SPACEFRAME_SYSTEM_ADAPTER_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),make=(type,extras={})=>makeModule(type,0,0,...(()=>{const f=moduleFootprintSub(type);return [f.sw,f.sh];})(),extras),cannon=make('gun',{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=make('gun',{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-energy-repeater'}),sink=make('heatsink',{heatsinkProfileId:'heatsink-s3'}),radiator=make('heatsink',{heatsinkProfileId:'radiator-s3'}),dump=make('heatsink',{heatsinkProfileId:'heatdump-s3'});for(const [name,m,thermal,reaction,exposure,factor,role,destruction] of [['cannon',cannon,'chemicalGun','chemicalGun','elevated',1.35,'gun',null],['repeater',repeater,'energyGun','energyGun','elevated',1.35,'gun',null],['sink',sink,'heatsink','sink','internal',.92,'heatsink','heatSinkStoredRelease'],['radiator',radiator,'heatsink','radiator','elevated',.92,'radiator',null],['dump',dump,'heatsink','dump','elevated',.92,'heatdump',null]]){check(`${name}-thermal`,moduleThermalProfileKey(m)===thermal,{actual:moduleThermalProfileKey(m),expected:thermal});check(`${name}-reaction`,moduleThermalReactionKey(m)===reaction,{actual:moduleThermalReactionKey(m),expected:reaction});check(`${name}-radar`,moduleRadarExposureClass(m)===exposure&&Math.abs(moduleRadarFactor(m)-factor)<1e-9,{class:moduleRadarExposureClass(m),factor:moduleRadarFactor(m)});check(`${name}-sector`,(moduleSectorRole(m)?.key||null)===(role||null),{role:moduleSectorRole(m)});check(`${name}-destruction`,moduleDestructionHookId(m)===(destruction||null),{hook:moduleDestructionHookId(m)});}const singletonExpect={reactor:['reactor','reactor','internal',.5,'reactor','reactorContainmentBreach'],engine:['engine','engine','surface',1.1,'engine',null],ir:['ir','sensor','surface',1.28,null,null],eo:['eo','sensor','surface',1.42,null,null],fcs:['fcs','sensor','internal',.7,'fcs',null],ammo:['ammo','ammo','internal',.42,'ammo','ammoMagazineExplosion'],shield:['shield','shield','internal',.72,'shield',null]};for(const [type,expected] of Object.entries(singletonExpect)){const extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:{},m=make(type,extras),[thermal,reaction,exposure,factor,role,destruction]=expected;check(`${type}-adapters`,moduleThermalProfileKey(m)===thermal&&moduleThermalReactionKey(m)===reaction&&moduleRadarExposureClass(m)===exposure&&Math.abs(moduleRadarFactor(m)-factor)<1e-9&&(moduleSectorRole(m)?.key||null)===(role||null)&&moduleDestructionHookId(m)===(destruction||null),{thermal:moduleThermalProfileKey(m),reaction:moduleThermalReactionKey(m),exposure:moduleRadarExposureClass(m),factor:moduleRadarFactor(m),role:moduleSectorRole(m),destruction:moduleDestructionHookId(m)});}const onlyCannon={design:{modules:[cannon]}},onlyRepeater={design:{modules:[repeater]}},mixed={design:{modules:[cannon,repeater]}};check('preferred-range-cannon',Math.abs(preferredCombatRange(onlyCannon)-5600)<1e-9,{actual:preferredCombatRange(onlyCannon)});check('preferred-range-repeater',Math.abs(preferredCombatRange(onlyRepeater)-2300)<1e-9,{actual:preferredCombatRange(onlyRepeater)});check('preferred-range-mixed',Math.abs(preferredCombatRange(mixed)-4300)<1e-9,{actual:preferredCombatRange(mixed)});check('legacy-radar-table-removed',typeof RADAR_MODULE_FACTORS==='undefined');check('sector-sensor-capability',isSectorSensorModule(make('ir'))&&isSectorSensorModule(make('eo'))&&!isSectorSensorModule(make('fcs')));const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-system-adapter-migration-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
-  window.__SPACEFRAME_REG_C_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),moduleTypes=Object.keys(MODULE_TYPE_REGISTRY),uiTypes=Object.keys(MODULE_UI_REGISTRY),expectedBasic=['hull','armor','bulkhead','reactor','engine','gun','ammo','shield'],expectedAdvanced=['ir','eo','radar','esm','fusion','fcs','heatsink'];check('ui-registry-covers-module-types',moduleTypes.every(id=>uiTypes.includes(id))&&uiTypes.every(id=>moduleTypes.includes(id)),{moduleTypes,uiTypes});check('tool-groups-generated',JSON.stringify(TOOL_GROUPS.basic)===JSON.stringify(expectedBasic)&&JSON.stringify(TOOL_GROUPS.advanced)===JSON.stringify(expectedAdvanced),{actual:TOOL_GROUPS});for(const id of moduleTypes){const ui=moduleUiDefinition(id);check(`tool-ui-${id}`,!!ui&&ui.id===id&&!!ui.icon&&!!ui.toolLabel,{ui});const cat=moduleCatalogForTool(id),expectedCatalog=id!=='ammo';check(`catalog-contract-${id}`,expectedCatalog?!!cat:!cat,{catalog:cat?.title||null});if(cat){const profiles=moduleCatalogProfiles(id),selected=selectedModuleCatalogId(id);check(`catalog-profiles-${id}`,profiles.length>0&&profiles.every(p=>p?.id),{count:profiles.length});check(`catalog-selection-${id}`,profiles.some(p=>p.id===selected),{selected,ids:profiles.map(p=>p.id)});check(`catalog-copy-${id}`,!!cat.currentName()&&typeof cat.currentMeta()==='string'&&!!cat.useLabel,{name:cat.currentName(),meta:cat.currentMeta(),useLabel:cat.useLabel});}}const sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'}),eo=makeModule('eo',0,0,.5,.5);check('registry-info-heatsink',moduleUiInfoRows(sink).some(([k])=>k==='열흡수'),{rows:moduleUiInfoRows(sink)});check('registry-info-eo',moduleUiInfoRows(eo).some(([k])=>k==='LRF 실용거리'),{rows:moduleUiInfoRows(eo)});check('legacy-module-catalog-table-removed',typeof MODULE_CATALOGS==='undefined');const toolbar=[...document.querySelectorAll('#toolbar .tool[data-tool]')].map(x=>x.dataset.tool);check('toolbar-renders-active-registry-group',TOOL_GROUPS[activeToolGroup].every(id=>toolbar.includes(id)),{activeToolGroup,toolbar});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'registry-driven-tool-catalog-info-ui-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,toolGroups:TOOL_GROUPS};};
-  window.__SPACEFRAME_REG_D_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedPowerOrder=['engine','ir','eo','esm','radar','fusion','fcs','shield','gun','ammo','heatsink'];for(const type of types){const ui=moduleUiDefinition(type),visual=moduleVisualDefinition(type);check(`visual-contract-${type}`,!!ui?.visual&&typeof visual.color==='string'&&typeof visual.edge==='string'&&!!visual.badge,{visual});check(`log-label-${type}`,typeof moduleLogLabel(type)==='string'&&moduleLogLabel(type).length>0,{label:moduleLogLabel(type)});check(`description-${type}`,typeof moduleTypeDescription(type)==='string'&&moduleTypeDescription(type).length>0,{description:moduleTypeDescription(type)});}check('power-panel-order',JSON.stringify(MODULE_POWER_PANEL_ORDER)===JSON.stringify(expectedPowerOrder),{actual:MODULE_POWER_PANEL_ORDER});for(const type of expectedPowerOrder){const panel=modulePowerPanelDefinition(type);check(`power-panel-${type}`,!!panel&&typeof panel.label==='string'&&panel.label.length>0,{panel});}const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),cannon=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'}),sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'});check('dynamic-badge-empty-turret',moduleDisplayBadge(empty)==='T4',{badge:moduleDisplayBadge(empty)});check('dynamic-badge-cannon',moduleDisplayBadge(cannon)==='C',{badge:moduleDisplayBadge(cannon)});check('dynamic-badge-repeater',moduleDisplayBadge(repeater)==='R',{badge:moduleDisplayBadge(repeater)});check('dynamic-badge-heatsink',moduleDisplayBadge(sink)===heatsinkProfileForModule(sink).badge,{badge:moduleDisplayBadge(sink)});const d=defaultDesign();updatePowerFitting(d);const powerHtml=document.getElementById('fitBreakdown')?.innerHTML||'';for(const type of expectedPowerOrder){const present=(d.modules||[]).some(m=>m.type===type),label=modulePowerPanelDefinition(type).label;check(`power-panel-render-${type}`,present?powerHtml.includes(label):true,{present,label,powerHtml});}const healthy=makeModule('engine',0,0,1,1);check('health-color-uses-display-contract',moduleHealthColor(healthy)===moduleDisplayColor(healthy),{health:moduleHealthColor(healthy),display:moduleDisplayColor(healthy)});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'registry-display-log-power-contract-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,powerOrder:MODULE_POWER_PANEL_ORDER};};
-  window.__SPACEFRAME_REG_E_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedResistance={reactor:18,engine:12,ir:7,eo:7,esm:7,radar:9,fusion:8,fcs:8,gun:15,ammo:9,shield:12,heatsink:9};for(const type of types){const profile=selectedModuleProfile(type),physical=modulePhysicalContract(type),legacy=TYPES[type]||{};check(`physical-profile-${type}`,!!profile&&physical.profileId===profile.id&&physical.massT>0&&physical.baseHp>0,{physical});check(`physical-resistance-${type}`,Math.abs(physical.resistance-expectedResistance[type])<1e-9,{actual:physical.resistance,expected:expectedResistance[type]});check(`legacy-physical-removed-${type}`,!Object.prototype.hasOwnProperty.call(legacy,'mass')&&!Object.prototype.hasOwnProperty.call(legacy,'hp')&&!Object.prototype.hasOwnProperty.call(legacy,'resist'),{legacy});const f=moduleFootprintSub(type),extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard'}:{},m=makeModule(type,0,0,f.sw,f.sh,extras),resolved=moduleResolvedProfile(m),contract=modulePhysicalContract(m);const expectedMass=resolved.mass*moduleScale(m)+(type==='ammo'?magazineAmmoMassTonnes(m):0);check(`instance-mass-${type}`,Math.abs(moduleMassTonnes(m)-expectedMass)<1e-9,{actual:moduleMassTonnes(m),expected:expectedMass});check(`instance-hp-${type}`,Math.abs(m.maxHp-contract.baseHp*moduleScale(m))<1e-9,{actual:m.maxHp,expected:contract.baseHp*moduleScale(m)});check(`instance-resistance-${type}`,Math.abs(moduleResistance(m)-expectedResistance[type])<1e-9,{actual:moduleResistance(m)});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),signature=design=>design.modules.map(m=>({type:m.type,profile:modulePhysicalContract(m).profileId,mass:moduleMassTonnes(m),hp:m.maxHp,resistance:moduleResistance(m)}));check('physical-roundtrip',JSON.stringify(signature(d))===JSON.stringify(signature(round)),{before:signature(d),after:signature(round)});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-physical-contract-single-source-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
+  window.__SPACEFRAME_REG_C_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),moduleTypes=Object.keys(MODULE_TYPE_REGISTRY),uiTypes=Object.keys(MODULE_UI_REGISTRY),expectedBasic=['hull','armor','bulkhead','reactor','engine','gun','ammo','shield'],expectedAdvanced=['ir','eo','radar','esm','fusion','fcs','heatsink'];check('ui-registry-covers-module-types',moduleTypes.every(id=>uiTypes.includes(id))&&uiTypes.every(id=>moduleTypes.includes(id)),{moduleTypes,uiTypes});check('tool-groups-generated',JSON.stringify(TOOL_GROUPS.basic)===JSON.stringify(expectedBasic)&&JSON.stringify(TOOL_GROUPS.advanced)===JSON.stringify(expectedAdvanced),{actual:TOOL_GROUPS});for(const id of moduleTypes){const ui=moduleUiDefinition(id);check(`tool-ui-${id}`,!!ui&&ui.id===id&&!!ui.icon&&!!ui.toolLabel,{ui});const cat=moduleCatalogForTool(id),expectedCatalog=id!=='ammo';check(`catalog-contract-${id}`,expectedCatalog?!!cat:!cat,{catalog:cat?.title||null});if(cat){const profiles=moduleCatalogProfiles(id),selected=selectedModuleCatalogId(id);check(`catalog-profiles-${id}`,profiles.length>0&&profiles.every(p=>p?.id),{count:profiles.length});check(`catalog-selection-${id}`,profiles.some(p=>p.id===selected),{selected,ids:profiles.map(p=>p.id)});check(`catalog-copy-${id}`,!!cat.currentName()&&typeof cat.currentMeta()==='string'&&!!cat.useLabel,{name:cat.currentName(),meta:cat.currentMeta(),useLabel:cat.useLabel});}}const sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'}),eo=makeModule('eo',0,0,.5,.5);check('registry-info-heatsink',moduleUiInfoRows(sink).some(([k])=>k==='열흡수'),{rows:moduleUiInfoRows(sink)});check('registry-info-eo',moduleUiInfoRows(eo).some(([k])=>k==='LRF 실용거리'),{rows:moduleUiInfoRows(eo)});check('legacy-module-catalog-table-removed',typeof MODULE_CATALOGS==='undefined');const toolbar=[...document.querySelectorAll('#toolbar .tool[data-tool]')].map(x=>x.dataset.tool);check('toolbar-renders-active-registry-group',TOOL_GROUPS[activeToolGroup].every(id=>toolbar.includes(id)),{activeToolGroup,toolbar});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'registry-driven-tool-catalog-info-ui-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,toolGroups:TOOL_GROUPS};};
+  window.__SPACEFRAME_REG_D_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedPowerOrder=['engine','ir','eo','esm','radar','fusion','fcs','shield','gun','ammo','heatsink'];for(const type of types){const ui=moduleUiDefinition(type),visual=moduleVisualDefinition(type);check(`visual-contract-${type}`,!!ui?.visual&&typeof visual.color==='string'&&typeof visual.edge==='string'&&!!visual.badge,{visual});check(`log-label-${type}`,typeof moduleLogLabel(type)==='string'&&moduleLogLabel(type).length>0,{label:moduleLogLabel(type)});check(`description-${type}`,typeof moduleTypeDescription(type)==='string'&&moduleTypeDescription(type).length>0,{description:moduleTypeDescription(type)});}check('power-panel-order',JSON.stringify(MODULE_POWER_PANEL_ORDER)===JSON.stringify(expectedPowerOrder),{actual:MODULE_POWER_PANEL_ORDER});for(const type of expectedPowerOrder){const panel=modulePowerPanelDefinition(type);check(`power-panel-${type}`,!!panel&&typeof panel.label==='string'&&panel.label.length>0,{panel});}const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),cannon=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'}),sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'});check('dynamic-badge-empty-turret',moduleDisplayBadge(empty)==='T4',{badge:moduleDisplayBadge(empty)});check('dynamic-badge-cannon',moduleDisplayBadge(cannon)==='C',{badge:moduleDisplayBadge(cannon)});check('dynamic-badge-repeater',moduleDisplayBadge(repeater)==='R',{badge:moduleDisplayBadge(repeater)});check('dynamic-badge-heatsink',moduleDisplayBadge(sink)===heatsinkProfileForModule(sink).badge,{badge:moduleDisplayBadge(sink)});const d=defaultDesign();updatePowerFitting(d);const powerHtml=document.getElementById('fitBreakdown')?.innerHTML||'';for(const type of expectedPowerOrder){const present=(d.modules||[]).some(m=>m.type===type),label=modulePowerPanelDefinition(type).label;check(`power-panel-render-${type}`,present?powerHtml.includes(label):true,{present,label,powerHtml});}const healthy=makeModule('engine',0,0,1,1);check('health-color-uses-display-contract',moduleHealthColor(healthy)===moduleDisplayColor(healthy),{health:moduleHealthColor(healthy),display:moduleDisplayColor(healthy)});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'registry-display-log-power-contract-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,powerOrder:MODULE_POWER_PANEL_ORDER};};
+  window.__SPACEFRAME_REG_E_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedResistance={reactor:18,engine:12,ir:7,eo:7,esm:7,radar:9,fusion:8,fcs:8,gun:15,ammo:9,shield:12,heatsink:9};for(const type of types){const profile=selectedModuleProfile(type),physical=modulePhysicalContract(type),legacy=TYPES[type]||{};check(`physical-profile-${type}`,!!profile&&physical.profileId===profile.id&&physical.massT>0&&physical.baseHp>0,{physical});check(`physical-resistance-${type}`,Math.abs(physical.resistance-expectedResistance[type])<1e-9,{actual:physical.resistance,expected:expectedResistance[type]});check(`legacy-physical-removed-${type}`,!Object.prototype.hasOwnProperty.call(legacy,'mass')&&!Object.prototype.hasOwnProperty.call(legacy,'hp')&&!Object.prototype.hasOwnProperty.call(legacy,'resist'),{legacy});const f=moduleFootprintSub(type),extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard'}:{},m=makeModule(type,0,0,f.sw,f.sh,extras),resolved=moduleResolvedProfile(m),contract=modulePhysicalContract(m);const expectedMass=resolved.mass*moduleScale(m)+(type==='ammo'?magazineAmmoMassTonnes(m):0);check(`instance-mass-${type}`,Math.abs(moduleMassTonnes(m)-expectedMass)<1e-9,{actual:moduleMassTonnes(m),expected:expectedMass});check(`instance-hp-${type}`,Math.abs(m.maxHp-contract.baseHp*moduleScale(m))<1e-9,{actual:m.maxHp,expected:contract.baseHp*moduleScale(m)});check(`instance-resistance-${type}`,Math.abs(moduleResistance(m)-expectedResistance[type])<1e-9,{actual:moduleResistance(m)});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),signature=design=>design.modules.map(m=>({type:m.type,profile:modulePhysicalContract(m).profileId,mass:moduleMassTonnes(m),hp:m.maxHp,resistance:moduleResistance(m)}));check('physical-roundtrip',JSON.stringify(signature(d))===JSON.stringify(signature(round)),{before:signature(d),after:signature(round)});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'module-physical-contract-single-source-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_REG_F_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),make=(type,extras={})=>{const f=moduleFootprintSub(type,{type,...extras});return makeModule(type,0,0,f.sw,f.sh,extras);};
     check('schema-contract',MODULE_STORAGE_SCHEMA_VERSION===33,{schema:MODULE_STORAGE_SCHEMA_VERSION});
     for(const type of types){const c=moduleStorageContract(type),m=make(type,type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}:{}),saved=serializeModule(m);check(`contract-${type}`,!!c&&Array.isArray(c.profileFields)&&Array.isArray(c.stateFields),{contract:c});check(`serialize-${type}`,saved.type===type&&saved.sx===m.sx&&saved.maxHp===m.maxHp,{saved});check(`validation-${type}`,moduleStorageValidationIssues(m).length===0,{issues:moduleStorageValidationIssues(m)});}
@@ -6551,7 +6583,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     }catch(error){check('sensor-em-runtime',false,{error:String(error?.stack||error)});}
     battle=oldBattle;
     const all=results.every(q=>q.pass);
-    return {version:'1.31.24',model:'sensor-em-c',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    return {version:'1.31.28',model:'sensor-em-c',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   // EM-D: 보호막 식별. 핵심은 "존재를 EO보다 훨씬 먼 거리에서 안다"는 역전 해소다.
@@ -6755,6 +6787,243 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     ship.x=sx;ship.y=sy;
     return tr;
   }
+  // RADAR-S1: 능동 레이더. 이 게임의 유일한 능동 센서가 무엇을 사고 무엇을 파는지를 고정한다.
+  window.__SPACEFRAME_RADAR_TEST__=()=>{
+    const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,detail});
+    try{
+      const oldBattle=battle;battle={time:1};
+      const c=RADAR_CONFIG,profile=radarProfile();
+      const mkDesign=(opts={})=>{
+        const d=cloneDesign(design),a=d.modules.find(m=>m.type==='reactor')||{sx:SUB_W/2,sy:SUB_H/2};
+        if(!shieldProfileIdsForDesign(d,false)[0]){const id='s3-quadrant',pp=SHIELD_PROFILES[id];d.modules.push(makeModule('shield',a.sx,a.sy,pp.sw*SUBDIV,pp.sh*SUBDIV,{shieldProfileId:id}));}
+        if(!d.modules.some(m=>m.type==='fusion'))d.modules.push(makeModule('fusion',a.sx-6,a.sy,2,2));
+        if(opts.esm){addDefaultBoundarySensor(d,'esm','front');addDefaultBoundarySensor(d,'esm','rear');}
+        if(opts.radar)addDefaultBoundarySensor(d,'radar','front');
+        return d;
+      };
+      const mkShip=(id,opts,x=0,y=0,angle=0,team='player')=>{
+        const sh=createShip(id,id,mkDesign(opts),x,y,angle,team);
+        syncShieldSystem(sh,true);syncPowerSystem(sh);return sh;
+      };
+
+      // ── 레이더 방정식 ────────────────────────────────────────────────
+      check('snr-follows-inverse-fourth-power',(()=>{
+        const a=radarSnrLinear(100,50000,1),b=radarSnrLinear(100,100000,1);
+        return Math.abs(a/b-16)<.02; // 거리 2배 → SNR 1/16
+      })(),{a:radarSnrLinear(100,50000,1),b:radarSnrLinear(100,100000,1)});
+      check('snr-linear-in-rcs',Math.abs(radarSnrLinear(200,60000,1)/radarSnrLinear(100,60000,1)-2)<1e-9,{});
+      check('snr-at-reference-is-unity',Math.abs(radarSnrLinear(c.refRcsM2,c.refRangeM,1)-1)<1e-9,{});
+      check('pd-is-half-at-unit-snr',Math.abs(radarDetectionPd(c.refRcsM2,c.refRangeM,1)-.5)<1e-9,{});
+      check('pd-monotonic-in-range',(()=>{const r=[20000,60000,120000,240000].map(R=>radarDetectionPd(100,R,85));
+        return r.every((v,i)=>i===0||v<r[i-1]);})(),{});
+      check('pd-bounded',(()=>{const v=[radarDetectionPd(0,1000,85),radarDetectionPd(1e6,1,85),radarDetectionPd(100,1e9,85)];
+        return v.every(q=>q>=0&&q<=1)&&v[0]===0;})(),{});
+      check('mode-boost-extends-range',(()=>{
+        const s=radarDetectionRangeM(100,profile.detection.searchBoost),t=radarDetectionRangeM(100,profile.detection.trackBoost),
+          stt=radarDetectionRangeM(100,profile.detection.sttBoost);
+        return s<t&&t<stt;
+      })(),{s:radarDetectionRangeM(100,profile.detection.searchBoost),stt:radarDetectionRangeM(100,profile.detection.sttBoost)});
+      check('detection-range-inverts-pd',(()=>{
+        const R=radarDetectionRangeM(250,85);return Math.abs(radarDetectionPd(250,R,85)-.5)<1e-9;
+      })(),{R:radarDetectionRangeM(250,85)});
+      // 사용자 목표: 통상 함선 자세에서 150~200km급
+      check('search-range-lands-in-the-intended-band',(()=>{
+        const R=radarDetectionRangeM(150,profile.detection.searchBoost);
+        return R>140000&&R<230000;
+      })(),{R:Math.round(radarDetectionRangeM(150,profile.detection.searchBoost))});
+
+      // ── 기존 RCS 모델을 소비한다 (새로 만들지 않는다) ─────────────────
+      const target=mkShip('t',{},150000,0,Math.PI,'enemy');
+      check('radar-consumes-the-existing-directional-rcs',(()=>{
+        const obs={x:0,y:0};
+        const nose=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:Math.PI}),
+              beam=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:Math.PI/2});
+        return nose>0&&beam>0&&Math.abs(nose-beam)>1e-6;
+      })(),{});
+      check('aspect-changes-detection-range',(()=>{
+        const obs={x:0,y:0};let lo=Infinity,hi=0;
+        for(let k=0;k<16;k++){
+          const rcs=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:k*Math.PI/8});
+          const R=radarDetectionRangeM(rcs,profile.detection.searchBoost);lo=Math.min(lo,R);hi=Math.max(hi,R);
+        }
+        return hi>lo*1.25; // 자세에 따라 탐지거리가 유의하게 흔들려야 한다
+      })(),{});
+      check('stealthier-armour-shortens-detection-range',(()=>{
+        const setArmor=(d,material)=>{for(const w of d.walls||[])if(w.kind==='armor'){syncArmorWall(w);w.layers=[{material,thicknessMm:120,gapMm:0}];syncArmorWall(w);}return d;};
+        const obs={x:0,y:0},base=mkDesign({});
+        const ceramic=createShip('c','c',setArmor(cloneDesign(base),'ceramicComposite'),150000,0,0,'enemy');
+        const uranium=createShip('u','u',setArmor(cloneDesign(base),'depletedUranium'),150000,0,0,'enemy');
+        const rc=radarCrossSectionM2(obs,ceramic),ru=radarCrossSectionM2(obs,uranium);
+        return rc<ru&&radarDetectionRangeM(rc,85)<radarDetectionRangeM(ru,85);
+      })(),{});
+
+      // ── 2면 회전식 스캔 기하 ─────────────────────────────────────────
+      check('two-faces-give-240-degrees-instantaneously',(()=>{
+        const f=radarInstantaneousCoverageFrac(profile);
+        return Math.abs(f-(profile.performance.faces*2*profile.performance.faceFieldOfRegardDeg)/360)<1e-9&&Math.abs(f-2/3)<1e-9;
+      })(),{frac:radarInstantaneousCoverageFrac(profile)});
+      check('coverage-is-not-total',radarInstantaneousCoverageFrac(profile)<1,{});
+      check('revisit-is-rotation-over-face-count',Math.abs(radarRevisitPeriodS(profile)-profile.performance.rotationPeriodS/profile.performance.faces)<1e-9,{revisit:radarRevisitPeriodS(profile)});
+      check('faces-are-evenly-spaced',(()=>{
+        const f=radarFaceBearings(profile,0,0,0);
+        return f.length===profile.performance.faces&&Math.abs(Math.abs(normalizeAngle(f[1]-f[0]))-Math.PI)<1e-9;
+      })(),{faces:radarFaceBearings(profile,0,0,0)});
+      check('rotation-advances-with-time',(()=>{
+        const a=radarFaceBearings(profile,0,0,0)[0],b=radarFaceBearings(profile,profile.performance.rotationPeriodS/4,0,0)[0];
+        return Math.abs(Math.abs(normalizeAngle(b-a))-Math.PI/2)<1e-6;
+      })(),{});
+      check('hull-rotation-carries-the-array',(()=>{
+        const a=radarFaceBearings(profile,0,0,0)[0],b=radarFaceBearings(profile,0,0,Math.PI/2)[0];
+        return Math.abs(normalizeAngle(b-a)-Math.PI/2)<1e-9;
+      })(),{});
+      check('bearing-inside-a-face-is-covered',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),cov=radarFaceCoverage(profile,f,f[0]);
+        return !!cov&&cov.offRad<1e-9&&Math.abs(cov.gain-1)<1e-9;
+      })(),{});
+      check('bearing-in-the-blind-wedge-is-not-covered',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),forRad=profile.performance.faceFieldOfRegardDeg*Math.PI/180;
+        return radarFaceCoverage(profile,f,normalizeAngle(f[0]+forRad*1.4))===null;
+      })(),{});
+      check('face-edge-loses-gain',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),forRad=profile.performance.faceFieldOfRegardDeg*Math.PI/180;
+        const edge=radarFaceCoverage(profile,f,normalizeAngle(f[0]+forRad*.95));
+        return edge&&edge.gain<1&&edge.gain>0;
+      })(),{gain:radarFaceCoverage(profile,radarFaceBearings(profile,0,0,0),normalizeAngle(radarFaceBearings(profile,0,0,0)[0]+.95*profile.performance.faceFieldOfRegardDeg*Math.PI/180))?.gain});
+      check('every-bearing-is-swept-within-one-revisit',(()=>{
+        const period=profile.performance.rotationPeriodS,steps=180;
+        for(let b=0;b<24;b++){
+          const bearing=b*Math.PI*2/24;let seen=false;
+          for(let i=0;i<steps&&!seen;i++){
+            const t=i*(period/profile.performance.faces)/steps;
+            if(radarFaceCoverage(profile,radarFaceBearings(profile,t,0,0),bearing))seen=true;
+          }
+          if(!seen)return false;
+        }
+        return true;
+      })(),{});
+      // 탐색은 FOR 전체를 얇게 훑고 STT는 빔을 세워 둔다 — 이 차이가 처리 이득 차이를 만든다.
+      check('mode-duty-orders-search-tws-stt',(()=>{
+        const s=radarModeDuty(profile,'SEARCH'),t=radarModeDuty(profile,'TWS'),u=radarModeDuty(profile,'STT');
+        return s<t&&t<u&&u===1&&Math.abs(s-profile.scan.beamWidthDeg/(2*profile.performance.faceFieldOfRegardDeg))<1e-9;
+      })(),{});
+
+      // ── 모듈 계약 ────────────────────────────────────────────────────
+      const rmod=makeModule('radar',0,0,...(()=>{const f=moduleFootprintSub('radar');return [f.sw,f.sh];})());
+      check('registered-in-all-registries',!!moduleTypeDefinition('radar')&&!!moduleUiDefinition('radar')&&MODULE_INSTALL_TYPES.includes('radar')&&!!SINGLETON_MODULE_PROFILES.radar&&!!sensorCoverageProfile('radar'),{});
+      check('is-the-only-active-sensor',moduleHasCapability(rmod,'activeSensor')&&moduleHasCapability(rmod,'sensor')&&!moduleHasCapability(rmod,'passiveSensor')&&!moduleHasCapability(makeModule('esm',0,0,1,1),'activeSensor'),{});
+      check('needs-hull-exposure-unlike-esm',(()=>{
+        const rp=sensorCoverageProfile('radar'),ep=sensorCoverageProfile('esm');
+        return rp.minExposureFraction>0&&rp.minExposureFraction>ep.minExposureFraction&&rp.occludeHull&&!ep.occludeHull;
+      })(),{});
+      check('is-a-large-radar-return-itself',(()=>{
+        const esm=makeModule('esm',0,0,1,1);
+        return moduleRadarExposureClass(rmod)==='elevated'&&moduleRadarFactor(rmod)>moduleRadarFactor(esm)&&moduleHasCapability(rmod,'externalRadarReturn');
+      })(),{factor:moduleRadarFactor(rmod)});
+      check('draws-far-more-power-than-passive-sensors',(()=>{
+        const r=selectedModulePowerProfile('radar'),e=selectedModulePowerProfile('esm');
+        return r.maxMW>e.maxMW*10;
+      })(),{radar:selectedModulePowerProfile('radar').maxMW});
+      check('narrow-beam-beats-passive-bearing-precision',sensorCoverageProfile('radar').response.bearingHalfMaxDeg<sensorCoverageProfile('esm').response.bearingHalfMaxDeg/4,{});
+
+      // ── 런타임: 탐지·측정·추적 ───────────────────────────────────────
+      const run=(observer,tgt,{seconds=25,dt=1/60,move=null}={})=>{
+        battle={player:observer,enemies:[tgt],time:0};
+        for(let i=0;i<seconds/dt;i++){battle.time+=dt;if(move)move(tgt,battle.time,dt);updateSensorSystems([observer,tgt],dt);}
+        return sensorTrackFor(observer,tgt.id);
+      };
+      const radarShip=()=>mkShip('rs',{radar:true,esm:true});
+      const plainTarget=(x,y=0)=>mkShip('pt',{},x,y,Math.PI,'enemy');
+
+      const near=run(radarShip(),plainTarget(90000));
+      check('detects-and-tracks-at-long-range',near.radarDetected===true&&(near.radarTrackQuality||0)>0&&Number.isFinite(near.radarRangeM),{dq:near.radarDetectQuality,tq:near.radarTrackQuality,range:near.radarRangeM});
+      check('range-measurement-is-precise-but-not-exact',(()=>{
+        const err=Math.abs(near.radarRangeM-90000);
+        return err>0&&err<profile.detection.searchRangeNoiseM*1.6;
+      })(),{err:near.radarRangeM-90000});
+      check('reports-its-own-bearing-uncertainty',Number.isFinite(near.radarBearingRad)&&near.radarBearingSigmaRad>0,{sigma:near.radarBearingSigmaRad});
+      check('track-survives-the-rotation-gap',(near.radarCoastS||0)<=RADAR_CONFIG.trackTtlS&&near.radarDetected===true,{coast:near.radarCoastS});
+      const far=run(radarShip(),plainTarget(600000));
+      check('far-contact-is-not-detected',!far.radarDetected&&(far.radarDetectQuality||0)<.12,{dq:far.radarDetectQuality});
+      const noRadar=run(mkShip('nr',{esm:true}),plainTarget(90000));
+      check('ship-without-a-radar-detects-nothing-by-radar',!noRadar.radarDetected&&(noRadar.radarDetectQuality||0)===0,{});
+
+      // 도플러: 우주엔 클러터가 없으므로 접선 기동이 탐지를 막지 못한다. 품질만 떨어진다.
+      check('doppler-quality-follows-radial-rate',(()=>{
+        const a=radarDopplerQuality(0),b=radarDopplerQuality(c.dopplerFullRateMps);
+        return Math.abs(a-c.dopplerQualityFloor)<1e-9&&Math.abs(b-1)<1e-9&&radarDopplerQuality(-c.dopplerFullRateMps)===b;
+      })(),{});
+      check('range-rate-is-signed-closing-speed',(()=>{
+        const o={x:0,y:0,vx:0,vy:0},t={x:1000,y:0,vx:-50,vy:0};
+        return Math.abs(radarRangeRateMps(o,t)+50)<1e-9&&Math.abs(radarRangeRateMps(o,{...t,vx:50})-50)<1e-9;
+      })(),{});
+      check('tangential-motion-has-no-range-rate',(()=>{
+        const o={x:0,y:0,vx:0,vy:0},t={x:1000,y:0,vx:0,vy:400};
+        return Math.abs(radarRangeRateMps(o,t))<1e-9;
+      })(),{});
+      const closing=run(radarShip(),plainTarget(90000),{move:(t)=>{t.vx=-300;t.x+=-300/60;}});
+      // 직선으로 옆으로 흐르면 시간이 지나며 기하가 틀어져 시선방향 성분이 생긴다.
+      // 진짜 접선 기동을 보려면 관측자를 중심으로 원을 그려야 한다.
+      const beaming=run(radarShip(),plainTarget(90000),{move:(t,now)=>{
+        const R=90000,w=300/R;
+        t.x=R*Math.cos(w*now);t.y=R*Math.sin(w*now);
+        t.vx=-R*w*Math.sin(w*now);t.vy=R*w*Math.cos(w*now);
+      }});
+      check('tangential-target-is-still-detected',beaming.radarDetected===true,{dq:beaming.radarDetectQuality});
+      check('tangential-motion-degrades-track-quality',(beaming.radarTrackQuality||0)<(closing.radarTrackQuality||0),{beaming:beaming.radarTrackQuality,closing:closing.radarTrackQuality});
+      check('range-rate-withheld-without-doppler',beaming.radarRangeRateMps===null&&Number.isFinite(closing.radarRangeRateMps),{beaming:beaming.radarRangeRateMps,closing:closing.radarRangeRateMps});
+
+      // ── EMCON: 켜면 보이고, 보이면 들킨다 ────────────────────────────
+      check('radar-registers-as-an-em-band',EM_BAND_ORDER.includes('radar')&&!!EM_BANDS.radar&&!!esmPowerPrior('radar'),{});
+      const emcon=(()=>{
+        const sh=radarShip();sh.systems.radarEmitting=false;
+        const quiet=shipEmEmission(sh,0);
+        sh.systems.radarEmitting=true;
+        const loud=shipEmEmission(sh,0);
+        return {quiet,loud};
+      })();
+      check('emitting-radar-dominates-the-ship-signature',emcon.loud.bands.radar.totalMW>emcon.quiet.totalMW&&emcon.loud.totalMW>emcon.quiet.totalMW*2,{quiet:emcon.quiet.totalMW,loud:emcon.loud.totalMW});
+      check('emcon-silences-the-radar-band-completely',emcon.quiet.bands.radar.totalMW===0,{});
+      check('emcon-stops-detection-too',(()=>{
+        const sh=radarShip();sh.systems.radarEmitting=false;
+        return radarOperationalFactor(sh)===0&&run(sh,plainTarget(90000)).radarDetected!==true;
+      })(),{});
+      // 편도 전파(ESM)가 왕복 전파(레이더)보다 반드시 멀리 간다 — 이 게임의 EMCON 긴장 전체가 여기서 나온다.
+      check('esm-outranges-the-radar-that-it-hears',(()=>{
+        const sh=radarShip(),tgt=plainTarget(150000);
+        const seesM=radarDetectionRangeM(radarCrossSectionM2(sh,tgt),profile.detection.searchBoost*radarOperationalFactor(sh));
+        const floor=SENSOR_CONFIG.emSignalFloorMW,scale=SENSOR_CONFIG.emRangeScaleM;
+        const heardM=scale*Math.sqrt(Math.max(0,shipEmEmission(sh,0).totalMW/floor-1));
+        return heardM>seesM*1.5;
+      })(),{});
+      check('stt-is-louder-than-search',(()=>{
+        const sh=radarShip();radarSystemState(sh).modeAtS=-1;
+        const search=emContinuousMWByBand(sh).radar;
+        sh.sensorTracks={x:{radarIlluminated:true}};radarSystemState(sh).modeAtS=-1;
+        const stt=emContinuousMWByBand(sh).radar;
+        return stt>search*1.5;
+      })(),{});
+      check('enemy-esm-classifies-the-radar-band',(()=>{
+        const sh=radarShip(),foe=mkShip('foe',{esm:true},150000,0,Math.PI,'enemy');
+        battle={player:sh,enemies:[foe],time:0};
+        for(let i=0;i<60*8;i++){battle.time+=1/60;updateSensorSystems([sh,foe],1/60);}
+        const tr=sensorTrackFor(foe,'rs');
+        return !!tr&&(tr.emBands||[]).some(b=>b.bandId==='radar');
+      })(),{});
+
+      // ── 사격 계약은 그대로 ───────────────────────────────────────────
+      check('radar-does-not-grant-range-known',near.rangeKnown===false,{rangeKnown:near.rangeKnown});
+      check('radar-track-still-blocks-auto-fire',trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},near)===false,{});
+      check('radar-range-lives-in-its-own-fields',near.radarRangeM!==near.rangeEstimateM&&near.actualDistanceM===null,{});
+      check('illumination-slot-exists-for-missiles',(()=>{
+        const dl=profile.datalink;
+        return 'radarIlluminated' in near&&Number.isFinite(dl.maxArh)&&Number.isFinite(dl.maxSarh);
+      })(),{});
+
+      battle=oldBattle;
+    }catch(error){check('radar-runtime',false,{error:String(error?.stack||error)});}
+    const all=results.every(q=>q.pass);
+    return {version:'1.31.28',model:'radar-s1-rotating-pesa',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+  };
   // ESM-GEO A: 함내 다중 ESM 기선 — 주 효과는 방위 정밀도다.
   window.__SPACEFRAME_ESM_BASELINE_TEST__=()=>{
     const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,detail});
@@ -6834,7 +7103,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       // ── 1) 송신출력 prior ─────────────────────────────────────────────
       check('prior-registered-for-every-em-band',EM_BAND_ORDER.every(id=>!!esmPowerPrior(id)&&esmPowerPrior(id).maxMW>esmPowerPrior(id).minMW),{order:EM_BAND_ORDER});
       check('unknown-prior-is-the-widest',EM_BAND_ORDER.every(id=>ESM_POWER_PRIORS.unknown.maxMW/ESM_POWER_PRIORS.unknown.minMW>esmPowerPrior(id).maxMW/esmPowerPrior(id).minMW),{});
-      check('unregistered-emitter-has-no-prior',esmPowerPrior('radar')===null&&esmPowerPrior(undefined)===null,{});
+      check('unregistered-emitter-has-no-prior',esmPowerPrior('lidar')===null&&esmPowerPrior(undefined)===null,{});
       const bandsAt=d=>esmTestObservation(d,0).emBands;
       const p12=esmPowerPriorForBands(bandsAt(R0),esmTestObservation(R0,0).emReceivedMW,1);
       const pUnknown=esmPowerPriorForBands([],10,1),pUnclassified=esmPowerPriorForBands(bandsAt(R0),esmTestObservation(R0,0).emReceivedMW,0);
@@ -7024,7 +7293,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       battle=oldBattle;
     }catch(error){check('esm-geolocation-runtime',false,{error:String(error?.stack||error)});}
-    const all=results.every(q=>q.pass);return {version:'1.31.26',model:'esm-geo-observation-a',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    const all=results.every(q=>q.pass);return {version:'1.31.28',model:'esm-geo-observation-a',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   window.__SPACEFRAME_SENSOR_EOIR_E1_TEST__=()=>{
@@ -7055,10 +7324,10 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('range-unknown-fire-hard-gate',trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},tr)===false&&refreshFireControlSolutionState({emOnly:false,rangeKnown:false,ageS:0,maxSolutionAgeS:99,minAutoConfidence:0,targetRadiusM:50,baseTrackingSigmaM:.001,intrinsicSigmaM:.001,distanceM:1000,velocityUncertaintyMps:0,accelerationUncertaintyMps2:0}).fireAuthorized===false,{});
       battle=oldBattle;
     }catch(error){check('sensor-eoir-runtime',false,{error:String(error?.stack||error)});}
-    const all=results.every(q=>q.pass);return {version:'1.31.24',model:'sensor-eoir-e1',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    const all=results.every(q=>q.pass);return {version:'1.31.28',model:'sensor-eoir-e1',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
-  syncMaterialControlButtons();setupToolbar();loadUiPreferences();{const loaded=loadDesigns();playerDesign=loaded.player;enemyDesignState=loaded.enemy;design=playerDesign;}setDesignSide('player');if(legacyIntegratedTurretsRemoved>0)showToast(`구형 2×2 통합 포탑 ${legacyIntegratedTurretsRemoved}개 제거 · S4 포탑으로 재설치 필요`);else if(legacyThermalPipesRemoved>0)showToast(`구형 열배관 ${legacyThermalPipesRemoved}개 제거 · 새 규격으로 재설치 필요`);else if(trunkWidthMigrationRemoved>0)showToast(`새 0.5m 폭과 충돌한 주배관 ${trunkWidthMigrationRemoved}개 제거 · 재배치 필요`);initDesignHistory();switchScene('build');updateBuildMetrics();updateSignatureOverlayUi();resizeCanvases();addLog('SPACEFRAME GRID PROTO 1.31.27 UI-POLISH-P1 · ESM GEO CLEANUP','info');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  syncMaterialControlButtons();setupToolbar();loadUiPreferences();{const loaded=loadDesigns();playerDesign=loaded.player;enemyDesignState=loaded.enemy;design=playerDesign;}setDesignSide('player');if(legacyIntegratedTurretsRemoved>0)showToast(`구형 2×2 통합 포탑 ${legacyIntegratedTurretsRemoved}개 제거 · S4 포탑으로 재설치 필요`);else if(legacyThermalPipesRemoved>0)showToast(`구형 열배관 ${legacyThermalPipesRemoved}개 제거 · 새 규격으로 재설치 필요`);else if(trunkWidthMigrationRemoved>0)showToast(`새 0.5m 폭과 충돌한 주배관 ${trunkWidthMigrationRemoved}개 제거 · 재배치 필요`);initDesignHistory();switchScene('build');updateBuildMetrics();updateSignatureOverlayUi();resizeCanvases();addLog('SPACEFRAME GRID PROTO 1.31.28 UI-POLISH-P1 · ESM GEO CLEANUP','info');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
 })();
   </script>
 </body>
