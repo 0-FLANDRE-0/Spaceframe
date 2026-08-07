@@ -50,8 +50,9 @@ Playwright로 `file://`을 열어 실행한다. 회귀 판정 기준:
 
 1. 최종 변경사항 commit
 2. 현재 branch push
-3. 해당 버전의 Git tag 생성
-4. tag를 origin에 push
+3. 해당 버전의 Git tag 생성 (로컬)
+4. ~~tag를 origin에 push~~ — **이 환경에서는 불가**(아래 "가능한 범위" 참조).
+   시도하지 말고 대상 커밋 SHA를 보고에 실어 사용자가 웹에서 tag를 만들게 한다
 5. `CHANGELOG.md` 갱신
 
 버전 번호는 `Spaceframe.html`의 `<title>` 프로토타입 번호를 따른다. 빌드 번호가
@@ -116,11 +117,28 @@ Release에 첨부할 최종 실행용 HTML 파일의 **정확한 파일명**도 
 |---|---|---|
 | commit | 가능 | git |
 | branch push | 가능 | git over HTTPS |
-| tag 생성·push | 가능 | git |
+| tag 로컬 생성 | 가능 | git |
+| **tag push** | **불가** | GitHub가 태그 ref 갱신을 403으로 거부 |
 | Release 조회 | 가능 | MCP `list_releases` / `get_release_by_tag` |
 | tag 조회 | 가능 | MCP `list_tags` / `get_tag`, `git ls-remote --tags` |
 | **Release 생성** | **불가** | 생성용 MCP 도구 없음 |
 | **Release asset 업로드** | **불가** | 업로드용 MCP 도구 없음 |
+
+`git push origin refs/tags/<name>`은 annotated·lightweight 모두 실패한다:
+
+```
+error: RPC failed; HTTP 403 curl 22 The requested URL returned error: 403
+```
+
+응답에 `X-Github-Request-Id`가 실려 오므로 프록시가 아니라 GitHub까지 도달한 뒤
+거부된 것이다. 같은 시각 같은 자격증명으로 브랜치 push는 정상 동작하므로, 이
+세션의 GitHub App 토큰이 `refs/heads/`는 쓰되 `refs/tags/`는 쓰지 못한다는 뜻이다.
+`info/refs?service=git-receive-pack` 핸드셰이크 자체는 200이다.
+
+**태그는 로컬에만 만들고 push는 시도하지 않는다.** 정식 버전 태그가 필요하면
+사용자가 GitHub 웹에서 Release를 만들 때 tag를 함께 생성하면 된다(Release 생성
+화면에서 새 tag 이름을 입력하면 대상 커밋에 tag가 만들어진다). 최종 보고에 대상
+커밋 SHA를 반드시 포함해 그 작업이 가능하게 한다.
 
 GitHub MCP 서버는 읽기 계열 Release/tag 도구만 노출한다(`get_latest_release`,
 `get_release_by_tag`, `get_tag`, `list_releases`, `list_tags`). `create_release`,
