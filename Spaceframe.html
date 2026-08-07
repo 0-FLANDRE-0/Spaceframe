@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#020508" />
-  <title>SPACEFRAME GRID PROTOTYPE 1.31.24</title>
+  <title>SPACEFRAME GRID PROTOTYPE 1.31.25</title>
   <style>
     :root{--bg:#020508;--text:#eaf7ff;--muted:#91aabb;--line:rgba(111,190,229,.35);--accent:#69d4ff;--danger:#ff7373}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -6189,7 +6189,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       const obs={emDetectQuality:.72,emQuality:.72,emBearingHalfRad:.16};for(let i=0;i<40;i++){battle.time+=.05;updateEsmUncertaintyArea(tr,observer,target,obs,.05);}check('esm-area-created',esmAreaTrackVisible(tr),{major:tr.esmAreaMajorM,minor:tr.esmAreaMinorM,center:[tr.esmAreaCenterX,tr.esmAreaCenterY]});check('true-emitter-contained',esmAreaContainsPoint(tr,target.x,target.y),{distance:Math.hypot(target.x-tr.esmAreaCenterX,target.y-tr.esmAreaCenterY),major:tr.esmAreaMajorM,minor:tr.esmAreaMinorM});check('major-not-below-minor',tr.esmAreaMajorM>=tr.esmAreaMinorM,{major:tr.esmAreaMajorM,minor:tr.esmAreaMinorM});check('no-receiver-pair-stays-wedge',tr.esmAreaRanged===false&&tr.esmRangeEstimateM===null,{ranged:tr.esmAreaRanged,range:tr.esmRangeEstimateM});const rc=document.createElement('canvas');rc.width=320;rc.height=240;const rctx=rc.getContext('2d'),bw0=battleCanvas.width,bh0=battleCanvas.height;battleCanvas.width=320;battleCanvas.height=240;camera={x:tr.esmAreaCenterX,y:tr.esmAreaCenterY,zoom:.018};drawTacticalEsmArea(rctx,tr,0);const pix=rctx.getImageData(0,0,320,240).data;let painted=0;for(let i=3;i<pix.length;i+=4)if(pix[i])painted++;check('esm-area-renders-as-region',painted>100,{painted});battleCanvas.width=bw0;battleCanvas.height=bh0;camera={...oldCamera};check('range-remains-unknown',tr.rangeKnown===false&&!Number.isFinite(tr.actualDistanceM),{rangeKnown:tr.rangeKnown});const beforeMajor=tr.esmAreaMajorM,beforeMinor=tr.esmAreaMinorM;tr.emOnly=false;for(let i=0;i<20;i++){battle.time+=.1;updateEsmUncertaintyArea(tr,observer,null,{},.1);}check('lost-signal-area-expands',tr.esmAreaMajorM>beforeMajor&&tr.esmAreaMinorM>beforeMinor&&tr.esmAreaAgeS>0,{beforeMajor,afterMajor:tr.esmAreaMajorM,beforeMinor,afterMinor:tr.esmAreaMinorM,age:tr.esmAreaAgeS});tr.rangeKnown=true;check('precise-fix-hides-area',!esmAreaTrackVisible(tr),{});
       const oldCanvasWidth=battleCanvas.width;battleCanvas.width=1000;camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.enterWorldWidthM*1.12);tacticalViewState.active=false;check('tactical-enter-threshold',tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.exitWorldWidthM*.88);tacticalViewState.active=true;check('tactical-exit-hysteresis',!tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});battleCanvas.width=oldCanvasWidth;
       battle=oldBattle;camera=oldCamera;tacticalViewState=oldTactical;
-    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.24',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.25',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   window.__SPACEFRAME_ESM_BASELINE_TEST__=()=>{
@@ -6332,7 +6332,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       battle=oldBattle;
     }catch(error){check('esm-baseline-runtime',false,{error:String(error?.stack||error)});}
-    const all=results.every(q=>q.pass);return {version:'1.31.24',model:'esm-baseline-interferometer-g',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    const all=results.every(q=>q.pass);return {version:'1.31.25',model:'esm-baseline-interferometer-g',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   window.__SPACEFRAME_SENSOR_EOIR_E1_TEST__=()=>{

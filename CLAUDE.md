@@ -26,63 +26,87 @@ Playwright로 `file://`을 열어 실행한다. 회귀 판정 기준:
 성능에 민감한 코드(매 틱 × 관측자 × 표적)를 건드렸다면 µs 단위로 실측한다.
 계측 훅이 필요하면 원본이 아니라 **사본에 주입**한다.
 
-## GitHub 마무리 절차
+## Git/GitHub 마무리 절차
+
+목적은 클라우드 세션이나 컨테이너가 종료돼도 작업 결과가 유실되지 않게 하고,
+각 정식 버전의 상태와 변경 이력을 GitHub에 지속적으로 보존하는 것이다.
 
 ### 작업 단위마다 (WIP)
 
-의미 있는 작업 단위가 끝날 때마다 commit하고 현재 작업 브랜치에 push한다.
+의미 있는 작업 단위가 끝나면 commit하고 현재 작업 브랜치에 push한다. 작업이
+여러 단계로 길어져도 **전체가 끝날 때까지 로컬 working tree에만 쌓아두지 않는다.**
+안전하게 구분 가능한 단위마다 끊어서 올린다.
 
 - **force push 금지**
-- **reset/rebase로 기존 이력 덮어쓰기 금지**
-- push 전에 현재 branch와 remote를 확인할 것
-- WIP 상태에서는 **GitHub Release를 만들지 않는다**
+- **기존 이력을 임의로 reset/rebase하거나 이미 존재하는 원격 커밋을 덮어쓰지 않는다**
+- commit/push 전에 **branch, remote, working tree 상태를 확인**해 의도한 저장소와
+  브랜치에 작업 중인지 확인한다
+- WIP·중간 상태는 **commit/push까지만** 한다. 정식 버전으로 취급하거나 버전 tag를
+  만들지 않는다
 
 ### 정식 버전이 완성됐을 때
 
-해당 버전의 요구사항과 검증이 **모두** 끝났을 때만 아래를 수행한다.
+구현과 최종 검증이 **모두** 끝났을 때만 아래를 수행한다.
 
-1. 최종 commit
-2. branch push
-3. 버전 tag 생성 및 push
-4. GitHub Release 생성
-5. Release notes 작성
-6. 완성된 실행용 HTML 파일을 Release asset으로 첨부
+1. 최종 변경사항 commit
+2. 현재 branch push
+3. 해당 버전의 Git tag 생성
+4. tag를 origin에 push
+5. `CHANGELOG.md` 갱신
 
-Release notes에는 다음을 간단히 포함한다.
+버전 번호는 `Spaceframe.html`의 `<title>` 프로토타입 번호를 따른다. 빌드 번호가
+작은 폭으로 증가하는 체계다(1.31.17 → .18 → .21 → .23 → .24 → .25). 정식 버전을
+낼 때는 title을 올리고, **이번 작업에서 실제로 손댄 테스트 하네스만** 새 버전으로
+재스탬프한다(각 하네스의 `version:` 필드는 마지막으로 손댄 시점을 뜻한다).
+tag 이름은 `v<버전>` 형식을 쓴다.
 
+### tag 이름 충돌
+
+동일한 이름의 tag가 이미 존재하면 **삭제하거나 덮어쓰지 말고 먼저 보고**한다.
+
+### GitHub Release — 직접 생성하지 않는다
+
+**이 환경에서는 Release를 만들 수 없는 것으로 확인됐다. 생성이나 업로드를 반복
+시도하지 않는다.** 대신 정식 버전마다 사용자가 GitHub 웹에서 직접 만들 수 있도록
+**Release Notes 초안을 최종 보고에 포함**한다. 초안에는 최소한 다음을 담는다.
+
+- 버전명
 - 주요 변경사항
 - 수정된 문제
 - 새 기능
-- 중요한 내부 구조 변경
+- 중요한 내부 변경사항
 - 테스트/검증 결과
-- 알려진 문제나 남은 작업
+- 알려진 문제
 
-### 이름 충돌
-
-기존 tag 또는 Release와 같은 버전명이 이미 존재하면 **덮어쓰거나 삭제하지 말고
-먼저 보고**한다.
+Release에 첨부할 최종 실행용 HTML 파일의 **정확한 파일명**도 함께 알려준다.
+관례는 `Spaceframe_v<버전>.html`이다.
 
 ### 문서
 
-- `README.md`는 프로젝트 자체 설명이 바뀔 때만 수정한다.
-- 버전별 변경 이력은 `CHANGELOG.md`와 Release notes에 기록한다.
-- `CHANGELOG.md`는 정식 버전마다 기존 형식을 유지하며 갱신한다.
+- `README.md`는 **매 버전마다 고치지 않는다.** 프로젝트 자체의 설명·사용법·구조가
+  실제로 바뀐 경우에만 갱신한다.
+- 버전별 변경 이력은 `CHANGELOG.md`에 기록한다. 정식 버전마다 기존 형식을 유지하며
+  버전 번호, 주요 기능 추가, 주요 수정사항, 중요한 내부 구조 변경, 테스트·검증
+  결과, 알려진 문제·남은 사항을 간결하게 남긴다.
 
 ### 작업 종료 보고
 
-최소한 다음을 보고한다.
+다음을 최종 보고에 포함한다.
 
+- repository
 - branch
 - commit SHA
 - push 성공 여부
 - (정식 버전이면) tag
-- (정식 버전이면) GitHub Release 이름
-- (정식 버전이면) Release asset 파일명
+- (정식 버전이면) tag push 성공 여부
+- CHANGELOG 갱신 여부
+- (정식 버전이면) Release Notes 초안
+- (정식 버전이면) Release asset으로 쓸 HTML 파일명
 
 ### 수행할 수 없을 때
 
-인증이나 권한 문제로 commit/push/tag/release/asset 업로드를 못 하면 **임의로
-우회하지 말고** 어느 단계에서 왜 실패했는지 보고한다.
+인증이나 권한 문제로 commit/push/tag를 못 하면 **임의로 우회하지 말고** 어느
+단계에서 왜 실패했는지 보고한다.
 
 ## 현재 환경에서 가능한 범위
 
@@ -110,9 +134,6 @@ GitHub MCP 서버는 읽기 계열 Release/tag 도구만 노출한다(`get_lates
      An org admin must connect the Claude GitHub App for this organization."}
 ```
 
-따라서 정식 버전 릴리스 요청이 오면 **1~3단계(commit·push·tag)까지 수행하고,
-4~6단계(Release·notes·asset)는 수행 불가 사실과 위 사유를 보고**한다. Release
-notes 본문은 `CHANGELOG.md`에 남겨 두어 사용자가 그대로 붙여 넣을 수 있게 한다.
-
-해소 방법은 조직 관리자가 https://claude.ai/admin-settings/claude-in-slack 에서
-Claude GitHub App을 연결하는 것이다.
+이건 확인된 사실이므로 **다시 시도하지 않는다.** 해소 방법은 조직 관리자가
+https://claude.ai/admin-settings/claude-in-slack 에서 Claude GitHub App을
+연결하는 것이다.
