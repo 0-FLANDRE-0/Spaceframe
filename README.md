@@ -10,21 +10,24 @@
 
 ## 개발 상태
 
-프로토타입입니다. 현재 빌드는 `Spaceframe.html`의 `<title>`에 표기된
-**1.31.25** 입니다.
+프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.27.html`의 `<title>`에 표기된
+**1.31.27** 입니다.
+
+게임 파일 이름은 `Spaceframe_v<버전>.html` 형식이며 버전이 올라갈 때마다 바뀝니다.
+저장소 최상위에는 항상 이 파일 하나만 존재합니다.
 
 버전별 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md)에 있습니다.
 `main`이 최신 통합·안정 브랜치이며, 완성된 작업만 Pull Request를 통해 병합됩니다.
 
 ## 실행 방법
 
-빌드 단계가 없습니다. 저장소를 받아 `Spaceframe.html`을 브라우저로 열면 그대로
-실행됩니다.
+빌드 단계가 없습니다. 저장소를 받아 `Spaceframe_v<버전>.html`을 브라우저로 열면
+그대로 실행됩니다.
 
 ```
-git clone https://github.com/0-FLANDRE-0/SHIP-HTML.git
-cd SHIP-HTML
-# Spaceframe.html 을 브라우저에서 열기
+git clone https://github.com/0-FLANDRE-0/Spaceframe.git
+cd Spaceframe
+# Spaceframe_v1.31.27.html 을 브라우저에서 열기
 ```
 
 파일을 더블클릭하거나 브라우저로 끌어다 놓아도 됩니다(`file://` 로 동작합니다).
@@ -37,13 +40,13 @@ cd SHIP-HTML
 
 | 파일 | 내용 |
 |---|---|
-| `Spaceframe.html` | 게임 전체. HTML·CSS·JavaScript가 한 파일에 들어 있습니다 |
+| `Spaceframe_v<버전>.html` | 게임 전체. HTML·CSS·JavaScript가 한 파일에 들어 있습니다 |
 | `CHANGELOG.md` | 버전별 변경 이력 |
 | `CLAUDE.md` | 이 저장소에서 작업할 때의 검증·Git 규칙 |
 
-게임 로직은 `Spaceframe.html` 안의 IIFE 하나에 담겨 있어 바깥에서 직접 호출할 수
+게임 로직은 게임 파일 안의 IIFE 하나에 담겨 있어 바깥에서 직접 호출할 수
 없습니다. 대신 페이지에 자체 테스트 하네스가 `window.__SPACEFRAME_*_TEST__`
-형태로 노출되어 있습니다(현재 35개). 브라우저 콘솔에서 다음과 같이 실행합니다.
+형태로 노출되어 있습니다(현재 36개). 브라우저 콘솔에서 다음과 같이 실행합니다.
 
 ```js
 Object.keys(window)
@@ -78,6 +81,7 @@ Object.keys(window)
 - EO / IR / ESM 세 계열 센서, 각각의 커버리지 프로파일과 탐지 한계
 - 함선 신호 특성(RCS·열·EM 방출)을 설계 형상에서 산출
 - 센서 융합 트랙 — 방위·거리·속도를 각각 별개의 신뢰도로 관리
-- EM 방출 대역별 분류, ESM 수동 측거(신호세기 / 안테나 기선 간섭계 / 자함 기동)
+- EM 방출 대역별 분류, ESM 수동 위치추정 — 송신출력 prior 기반 신호세기 거리추정,
+  함내 다중 ESM 기선의 방위 정밀도, 관측 이력 기반 TMA의 세 증거를 융합
 - 거리를 확정하지 못한 접촉은 방위 쐐기 또는 불확실성 타원으로만 표시
 - 사격통제 해는 거리가 확정된 트랙에서만 승인
