@@ -1342,7 +1342,7 @@
   const TACTICAL_SENSOR_CONFIG=Object.freeze({
     enterWorldWidthM:18000,exitWorldWidthM:14500,
     minZoomMul:.05,minCameraZoom:.0035,
-    esmAreaMinRadiusM:3200,esmAreaMaxRadiusM:22000,
+    esmAreaMaxRadiusM:22000,
     esmAreaSignalLostGrowthMps:145,esmAreaMemoryS:18,
     tacticalSymbolMinPx:8,tacticalSymbolMaxPx:15,
     // ── ESM 위치추정 (ESM-GEO) ────────────────────────────────
@@ -1370,6 +1370,9 @@
     // 방위 측정 오차 중 관측마다 상관된(같은 자리에서 평균해도 줄지 않는) 성분의 비율.
     // 병합 관측의 σ 바닥이자 계통 편향의 크기이므로, 여기가 0이면 제자리에서도 무한정 좁아진다.
     bearingSystematicFrac:.55,
+    // 분류 신뢰도가 낮을 때 식별 prior를 넓히는 배율의 로그 이득. 실전에서 도달하는
+    // 분류 신뢰도(대략 0.4 안팎)에서도 신호세기가 거친 거리를 만들 수 있도록 잡는다.
+    priorWidenGain:1.6,
     // ── 관측 이력 ─────────────────────────────────────────────
     tmaHistoryMax:26,          // 장시간 전투에서도 이력이 무한히 자라지 않게 하는 상한
     tmaHistoryMaxAgeS:120,     // 이보다 오래된 방위선은 표적이 그동안 움직였으므로 버린다
@@ -1950,8 +1953,8 @@
     shield:Object.freeze({minMW:9,maxMW:78}),
     fcs:Object.freeze({minMW:4,maxMW:34}),
     weapon:Object.freeze({minMW:10,maxMW:150}),
-    // 분류가 전혀 안 될 때. 후보가 손전등부터 주력함까지이므로 극단적으로 넓고,
-    // 그 결과 거리는 사실상 만들어지지 않는다(쐐기로 남는다).
+    // 대역을 하나도 짚지 못했을 때. 후보가 손전등부터 주력함까지이므로 극단적으로
+    // 넓고, 그 결과 거리는 사실상 만들어지지 않는다(쐐기로 남는다).
     unknown:Object.freeze({minMW:1,maxMW:9000})
   });
   function esmPowerPrior(bandId){return ESM_POWER_PRIORS[bandId]||null;}
@@ -1966,11 +1969,13 @@
       lo+=prior.minMW;hi+=prior.maxMW;share+=Math.max(0,Number(b.receivedMW)||0);identified++;
     }
     const fraction=identified&&rx>0?clamp(share/rx,.05,1):0;
+    // 대역을 하나도 못 짚으면 방출원에 대해 아는 것이 없다 — 가장 넓은 prior로 간다.
     if(!identified||!(fraction>0)||!(hi>lo))return {minMW:wide.minMW,maxMW:wide.maxMW,identified:0,fraction:0,classifyQuality:cls};
-    const identLo=Math.max(1e-3,lo/fraction),identHi=Math.max(identLo*1.01,hi/fraction);
-    const minMW=Math.exp(Math.log(wide.minMW)*(1-cls)+Math.log(identLo)*cls);
-    const maxMW=Math.max(minMW*1.01,Math.exp(Math.log(wide.maxMW)*(1-cls)+Math.log(identHi)*cls));
-    return {minMW,maxMW,identified,fraction,classifyQuality:cls};
+    // 대역을 짚었다면 종류는 아는 것이다. 낮은 신뢰도는 '아무것도 모름'이 아니라
+    // '세부 형식이 불확실함'이므로, 넓은 prior로 끌고 가지 않고 배율로 넓히기만 한다.
+    const widen=Math.exp(TACTICAL_SENSOR_CONFIG.priorWidenGain*(1-cls));
+    const identLo=Math.max(1e-3,lo/fraction/widen),identHi=Math.max(identLo*1.01,hi/fraction*widen);
+    return {minMW:identLo,maxMW:identHi,identified,fraction,classifyQuality:cls};
   }
   const emTransmissionCache=new WeakMap();
   // 장갑 두께·재질에 의한 미세 감쇄만 적용한다. 방출원 위치와 무관하게 거의 등방적이다.
@@ -2281,7 +2286,8 @@
         last.bearingRad=normalizeAngle(last.bearingRad+normalizeAngle(bearingRad-last.bearingRad)/n);
         last.bearingSigmaRad=Math.max(sigma*clamp01(c.bearingSystematicFrac),Math.min(last.bearingSigmaRad,sigma)/Math.sqrt(n));
         last.measuredAtS=nowS;
-        tr._esmHistoryVersion=(tr._esmHistoryVersion||0)+1;
+        // 병합은 이력의 구성을 바꾸지 않는다. 여기서 버전을 올리면 제자리에 있는 동안
+        // 매 틱 최소제곱이 다시 풀린다 — 병합분은 시간 스로틀로 따라잡게 둔다.
         return last;
       }
     }
@@ -5648,11 +5654,14 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     const a=track.esmAreaAngleRad||0;
     ctx.save();ctx.strokeStyle=`rgba(202,164,255,${(.42+q*.36)*pulse})`;ctx.fillStyle=`rgba(122,79,184,${.035+q*.045})`;ctx.lineWidth=1.3;ctx.textAlign='center';ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';
     if(!track.esmAreaRanged&&observer){
-      const own=worldToScreen(observer.x,observer.y),half=Math.max(.04,track.emBearingHalfRad||.35),reach=Math.hypot(battleCanvas.width,battleCanvas.height);
+      // 쐐기의 폭도 ESM이 실제로 측정한 방위 σ를 따른다 — 함내 기선이 좋으면 쐐기가
+      // 눈에 띄게 가늘어진다. 타원과 같은 1.66σ 규약으로 그리되 라벨에는 σ를 적는다.
+      const sigma=Math.max(TACTICAL_SENSOR_CONFIG.pairSigmaFloorRad,track.esmBearingSigmaRad||track.emBearingHalfRad||.35);
+      const own=worldToScreen(observer.x,observer.y),half=clamp(TACTICAL_SENSOR_CONFIG.areaSigmaMul*sigma,.004,1.2),reach=Math.hypot(battleCanvas.width,battleCanvas.height);
       ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(own.x,own.y);ctx.arc(own.x,own.y,reach,a-half,a+half);ctx.closePath();ctx.fill();ctx.stroke();ctx.setLineDash([]);
       // 쐐기는 화면 밖까지 뻗으므로 라벨은 캔버스 안으로 끌어당긴다.
       const lx=clamp(own.x+Math.cos(a)*reach*.42,70,battleCanvas.width-70),ly=clamp(own.y+Math.sin(a)*reach*.42,18,battleCanvas.height-14);
-      ctx.fillStyle='rgba(225,207,255,.96)';ctx.fillText(`${label} · 방위 ${esmBearingPrecisionLabel(half)} · 거리 미상`,lx,ly-6);
+      ctx.fillStyle='rgba(225,207,255,.96)';ctx.fillText(`${label} · 방위 ${esmBearingPrecisionLabel(sigma)} · 거리 미상`,lx,ly-6);
       ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(192,171,232,.84)';ctx.fillText(sub,lx,ly+5);
     }else{
       const c=worldToScreen(track.esmAreaCenterX,track.esmAreaCenterY);
@@ -6393,7 +6402,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       const rc=document.createElement('canvas');rc.width=320;rc.height=240;const rctx=rc.getContext('2d'),bw0=battleCanvas.width,bh0=battleCanvas.height;battleCanvas.width=320;battleCanvas.height=240;camera={x:tr.esmAreaCenterX,y:tr.esmAreaCenterY,zoom:.018};drawTacticalEsmArea(rctx,tr,0);const pix=rctx.getImageData(0,0,320,240).data;let painted=0;for(let i=3;i<pix.length;i+=4)if(pix[i])painted++;check('esm-area-renders-as-region',painted>100,{painted});battleCanvas.width=bw0;battleCanvas.height=bh0;camera={...oldCamera};check('range-remains-unknown',tr.rangeKnown===false&&!Number.isFinite(tr.actualDistanceM),{rangeKnown:tr.rangeKnown});const beforeMajor=tr.esmAreaMajorM,beforeMinor=tr.esmAreaMinorM;tr.emOnly=false;for(let i=0;i<20;i++){battle.time+=.1;updateEsmUncertaintyArea(tr,observer,{},.1);}check('lost-signal-area-expands',tr.esmAreaMajorM>beforeMajor&&tr.esmAreaMinorM>beforeMinor&&tr.esmAreaAgeS>0,{beforeMajor,afterMajor:tr.esmAreaMajorM,beforeMinor,afterMinor:tr.esmAreaMinorM,age:tr.esmAreaAgeS});tr.rangeKnown=true;check('precise-fix-hides-area',!esmAreaTrackVisible(tr),{});
       const oldCanvasWidth=battleCanvas.width;battleCanvas.width=1000;camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.enterWorldWidthM*1.12);tacticalViewState.active=false;check('tactical-enter-threshold',tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.exitWorldWidthM*.88);tacticalViewState.active=true;check('tactical-exit-hysteresis',!tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});battleCanvas.width=oldCanvasWidth;
       battle=oldBattle;camera=oldCamera;tacticalViewState=oldTactical;
-    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.25',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.26',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   // ── ESM-GEO 공용 시험 장치 ─────────────────────────────────────────────────
@@ -6529,7 +6538,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       })(),{est:sigEst(12000,1)});
       check('signal-range-brackets-the-true-distance',(()=>{const s=sigEst(12000,1);return s.minM<=12000&&s.maxM>=12000;})(),{s:sigEst(12000,1)});
       check('signal-range-needs-a-received-signal',esmSignalRangeEstimate({emReceivedMW:0,emBands:[]},{})===null,{});
-      check('poor-classification-widens-range-uncertainty',sigEst(12000,0).sigmaM>sigEst(12000,1).sigmaM*3,{poor:sigEst(12000,0).sigmaM,good:sigEst(12000,1).sigmaM});
+      check('poor-classification-widens-range-uncertainty',sigEst(12000,0).sigmaM>sigEst(12000,1).sigmaM*2,{poor:sigEst(12000,0).sigmaM,good:sigEst(12000,1).sigmaM});
       check('signal-range-monotonic-in-distance',(()=>{const a=sigEst(6000,1).rangeM,b=sigEst(12000,1).rangeM,e=sigEst(24000,1).rangeM;return a<b&&b<e;})(),{r:[sigEst(6000,1).rangeM,sigEst(12000,1).rangeM,sigEst(24000,1).rangeM]});
       check('power-quantile-moves-the-point-estimate-inside-the-interval',(()=>{
         const obs=esmTestObservation(12000,0),lo=esmSignalRangeEstimate(obs,{_esmRangeQuantile:0,emClassifyQuality:1}),hi=esmSignalRangeEstimate(obs,{_esmRangeQuantile:1,emClassifyQuality:1});
@@ -6672,6 +6681,21 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('wedge-label-withholds-range',(()=>{const t=esmAreaRangeLabel(unclassified);return t.includes('거리 미상')&&!/거리 \d/.test(t);})(),{label:esmAreaRangeLabel(unclassified)});
       check('ellipse-label-names-its-evidence',(()=>{const t=esmAreaRangeLabel(pairTma);return /거리 \d/.test(t)&&/기선 \d+m/.test(t)&&t.includes('TMA')&&t.includes('신호세기');})(),{label:esmAreaRangeLabel(pairTma)});
       check('bearing-precision-never-collapses-to-zero',!/±0\.0°/.test(esmAreaRangeLabel(pairTma))&&!/±0\.0°/.test(esmAreaRangeLabel(unclassified)),{a:esmAreaRangeLabel(pairTma),b:esmAreaRangeLabel(unclassified)});
+      // 쐐기도 실제 측정 방위 σ를 반영한다 — 기선이 좋으면 라벨 단위부터 달라진다.
+      const wedgeSolo=esmTestRun(one(),tgt(AHEAD,12000),{cls:0}),wedgePair=esmTestRun(beam(),tgt(AHEAD,12000),{cls:0});
+      check('wedge-bearing-follows-the-measured-sigma',wedgePair.esmBearingSigmaRad<wedgeSolo.esmBearingSigmaRad*.02&&/mrad/.test(esmAreaRangeLabel(wedgePair))&&/°/.test(esmAreaRangeLabel(wedgeSolo)),{pair:esmAreaRangeLabel(wedgePair),solo:esmAreaRangeLabel(wedgeSolo)});
+      check('both-remain-wedges-without-range-evidence',wedgeSolo.esmAreaRanged===false&&wedgePair.esmAreaRanged===false,{});
+      // 그려지는 쐐기의 폭도 따라 좁아져야 한다 — 라벨만 바뀌고 그림이 그대로면 거짓말이 된다.
+      check('drawn-wedge-narrows-with-a-good-baseline',(()=>{
+        const oldCamera={...camera},w0=battleCanvas.width,h0=battleCanvas.height;
+        const paint=tr=>{const cv=document.createElement('canvas');cv.width=320;cv.height=240;const cx=cv.getContext('2d');
+          battleCanvas.width=320;battleCanvas.height=240;camera={x:6000,y:0,zoom:.012};
+          drawTacticalEsmArea(cx,tr,0,{x:0,y:0});
+          const d=cx.getImageData(0,0,320,240).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i])n++;return n;};
+        const solo=paint(wedgeSolo),pair=paint(wedgePair);
+        battleCanvas.width=w0;battleCanvas.height=h0;camera=oldCamera;
+        return solo>0&&pair>0&&pair<solo*.6;
+      })(),{});
       // 타원 판정이 실제로 판별력이 있어야 위의 통계 단언이 의미를 가진다.
       check('ellipse-predicate-is-discriminating',(()=>{
         const p=pairTma,a=p.esmAreaAngleRad;
