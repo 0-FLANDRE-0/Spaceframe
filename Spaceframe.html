@@ -1358,7 +1358,19 @@
     pairSigmaNoiseGain:2.4,   // 약한 신호일수록 위상 측정이 불안정해진다
     minBaselineM:2.5,         // 이보다 짧은 유효 기선은 없는 것으로 취급
     minAxisM:420,             // 불확실성 영역이 점처럼 수렴하지 않도록 하는 하한
-    wedgeRatio:6              // major/minor가 이보다 크면 거리 미특정(쐐기)으로 취급
+    wedgeRatio:6,             // 신호 소실 후 타원이 이보다 길어지면 거리 추정을 버린다
+    // ── 수동 측거 세 갈래 ─────────────────────────────────────
+    // 어느 것도 정밀하지 않다. 셋을 다 합쳐도 '대강'에 머무는 것이 정상이다.
+    //  1) 신호세기 — 방출원 종류로 송신 전력을 가정하고 역제곱을 되짚는다. 1기로도 즉시 나온다.
+    //  2) 안테나 기선 — 함체에 떨어뜨려 단 수신기 쌍의 위상 시차. 수십 m.
+    //  3) 자함 기동(TMA) — 시간을 들여 만드는 합성 기선. 수 km까지 자란다.
+    // 셋은 서로 독립이므로 역분산으로 합친다. 하나만 좋아도 전체가 좋아진다.
+    signalRelSigmaBest:.42,   // 방출원 분류가 확실할 때의 송신전력 가정 오차
+    signalRelSigmaWorst:.95,  // 분류가 안 될 때 — 사실상 거리를 못 만든다
+    tmaSampleTauS:8,          // 방위 평균이 √N으로 좋아지는 시간 상수
+    tmaMaxBaselineM:6000,     // 표적도 움직이므로 합성 기선을 무한정 믿지 않는다
+    relRangeSigmaFloor:.18,   // 표적 기동 때문에 해가 완전히 수렴하지 않는다 — '대강'의 바닥
+    maxRelRangeSigma:.6       // 이보다 나쁘면 거리를 공표하지 않고 쐐기로 남긴다
   });
   // SENSOR-FCS B1: 관측 시각과 현재 시각을 분리하고, 통합 트랙의 불확실성을 사격해와 실제 탄착 분산에 전파한다.
   const SENSOR_FCS_PRECISION_CONFIG=Object.freeze({latencyMinS:.045,latencyMaxS:.28,legacyLatencyS:.18,solutionAgeFloorS:.28,solutionAgePeriods:3.2,minTargetRadiusM:1.5,maxTrackingDispersionMrad:18});
@@ -2096,7 +2108,7 @@
       emReceivedMW:emSignal.received,emEmittedMW:emSignal.emission.totalMW,emBaseQuality,emQuality:em.quality,emDetectQuality:em.detectQuality,emBearingQuality:em.bearingQuality,emBearingHalfRad:em.bearingHalfRad,emCoverageQuality:em.coverageQuality,emMatchedSensors:em.matchedSensors,emActive:em.active,emBands,emClassifyQuality,
       emShieldMW,shieldExistencePotential,shieldStructurePotential,shieldStatePotential,shieldEvidenceSource,
       shieldEvidence:{em:emShieldEvidence,eo:eoShieldVisual,impact:impactEvidence}};}
-  function createSensorTrack(observer,target){const obs=sensorObservation(observer,target),noiseAngle=Math.random()*Math.PI*2,initialOffset=Math.min(70,Math.max(6,obs.distanceM*.008)),estimatedX=target.x+Math.cos(noiseAngle)*initialOffset,estimatedY=target.y+Math.sin(noiseAngle)*initialOffset,now=battle?.time||0;return {targetId:target.id,detectionQuality:0,eoQuality:0,irQuality:0,emQuality:0,emClassifyQuality:0,emBearingHalfRad:0,eoBearingHalfRad:0,emReceivedMW:0,emBands:[],emOnly:false,irOnly:false,eoBearingOnly:false,passiveBearingOnly:false,emBearingOnly:false,emMemoryS:0,rangeKnown:false,rangeMinM:null,rangeMaxM:null,lastNonEmFixAtS:null,bearingQuality:0,rangeQuality:0,velocityQuality:0,accelerationQuality:0,shapeQuality:0,lockQuality:0,source:'SEARCH',bearingEstimate:Math.atan2(estimatedY-observer.y,estimatedX-observer.x),rangeEstimateM:Math.max(1,Math.hypot(estimatedX-observer.x,estimatedY-observer.y)),estimatedX,estimatedY,estimatedVx:0,estimatedVy:0,estimatedAx:0,estimatedAy:0,rangeUncertaintyM:initialOffset,positionUncertaintyM:initialOffset,velocityUncertaintyMps:6,accelerationUncertaintyMps2:8,bearingUncertaintyRad:Math.max(.0004,initialOffset/Math.max(1,obs.distanceM)),lastMeasurementAtS:now-SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,measurementLatencyS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,trackAgeS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,lastSeenS:99,sampleTimer:0,csM2:obs.csM2,irSignature:obs.irSignature,actualDistanceM:null,irSensorCount:0,eoSensorCount:0,eoLrfQuality:0,eoLrfStableS:0,eoLrfLocked:false,eoAngularMrad:obs.angularMrad||0,eoIdentificationQuality:0,eoIdentificationStage:0,eoLastSeenS:99,eoStageRiseS:0,eoStageDecayS:0,shieldId:createShieldIdentification(),esmAreaCenterX:null,esmAreaCenterY:null,esmAreaMajorM:0,esmAreaMinorM:0,esmAreaAngleRad:0,esmAreaRanged:false,esmBaselineM:0,esmBaselineSeparationM:0,esmReceiverCount:0,esmBearingSigmaRad:0,esmRangeEstimateM:null,esmRangeSigmaM:null,esmAreaConfidence:0,esmAreaAgeS:99,esmAreaLastUpdateS:null,_esmAreaNoiseAngle:Math.random()*Math.PI*2,_esmAreaNoiseScale:.78+Math.random()*.18,_positionNoiseAngle:noiseAngle,_positionNoiseScale:.72+Math.random()*.28,_velocityBiasX:(Math.random()*2-1),_velocityBiasY:(Math.random()*2-1)};}
+  function createSensorTrack(observer,target){const obs=sensorObservation(observer,target),noiseAngle=Math.random()*Math.PI*2,initialOffset=Math.min(70,Math.max(6,obs.distanceM*.008)),estimatedX=target.x+Math.cos(noiseAngle)*initialOffset,estimatedY=target.y+Math.sin(noiseAngle)*initialOffset,now=battle?.time||0;return {targetId:target.id,detectionQuality:0,eoQuality:0,irQuality:0,emQuality:0,emClassifyQuality:0,emBearingHalfRad:0,eoBearingHalfRad:0,emReceivedMW:0,emBands:[],emOnly:false,irOnly:false,eoBearingOnly:false,passiveBearingOnly:false,emBearingOnly:false,emMemoryS:0,rangeKnown:false,rangeMinM:null,rangeMaxM:null,lastNonEmFixAtS:null,bearingQuality:0,rangeQuality:0,velocityQuality:0,accelerationQuality:0,shapeQuality:0,lockQuality:0,source:'SEARCH',bearingEstimate:Math.atan2(estimatedY-observer.y,estimatedX-observer.x),rangeEstimateM:Math.max(1,Math.hypot(estimatedX-observer.x,estimatedY-observer.y)),estimatedX,estimatedY,estimatedVx:0,estimatedVy:0,estimatedAx:0,estimatedAy:0,rangeUncertaintyM:initialOffset,positionUncertaintyM:initialOffset,velocityUncertaintyMps:6,accelerationUncertaintyMps2:8,bearingUncertaintyRad:Math.max(.0004,initialOffset/Math.max(1,obs.distanceM)),lastMeasurementAtS:now-SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,measurementLatencyS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,trackAgeS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,lastSeenS:99,sampleTimer:0,csM2:obs.csM2,irSignature:obs.irSignature,actualDistanceM:null,irSensorCount:0,eoSensorCount:0,eoLrfQuality:0,eoLrfStableS:0,eoLrfLocked:false,eoAngularMrad:obs.angularMrad||0,eoIdentificationQuality:0,eoIdentificationStage:0,eoLastSeenS:99,eoStageRiseS:0,eoStageDecayS:0,shieldId:createShieldIdentification(),esmAreaCenterX:null,esmAreaCenterY:null,esmAreaMajorM:0,esmAreaMinorM:0,esmAreaAngleRad:0,esmAreaRanged:false,esmBaselineM:0,esmBaselineSeparationM:0,esmReceiverCount:0,esmBearingSigmaRad:0,esmRangeEstimateM:null,esmRangeSigmaM:null,esmMotionBaselineM:0,esmMotionSpanS:0,esmRangeRelSigma:Infinity,_esmPowerBias:.62+Math.random()*1.05,_esmTmaAnchorX:null,_esmTmaAnchorY:null,_esmTmaAnchorAtS:null,esmAreaConfidence:0,esmAreaAgeS:99,esmAreaLastUpdateS:null,_esmAreaNoiseAngle:Math.random()*Math.PI*2,_esmAreaNoiseScale:.78+Math.random()*.18,_positionNoiseAngle:noiseAngle,_positionNoiseScale:.72+Math.random()*.28,_velocityBiasX:(Math.random()*2-1),_velocityBiasY:(Math.random()*2-1)};}
   function sensorTrackFor(observer,targetId){return observer?.sensorTracks?.[targetId]||null;}
   // 세 축을 각자의 속도로 올리고 각자의 속도로 낡힌다. 추정 내용은 그 축의 신뢰도가
   // 게이트를 넘었을 때만 읽어들인다 — 신뢰도가 낮으면 아예 모르는 상태로 둔다.
@@ -2164,15 +2176,64 @@
     }
     return best.pairIds?best:{...empty,count:mods.length};
   }
-  // 유효 기선에서 불확실성 타원의 두 반축을 만든다. minor는 방위각 오차에 따른 횡방향,
-  // major는 거리 방향. 유효 기선이 없으면 major가 최대치로 가서 쐐기가 된다.
-  function esmUncertaintyAxes(bEffM,rangeM,quality){
-    const c=TACTICAL_SENSOR_CONFIG,q=clamp01(quality),R=Math.max(1,rangeM);
-    const usable=bEffM>=c.minBaselineM?bEffM:0;
-    const sigma=(usable>0?Math.max(c.pairSigmaFloorRad,c.pairSigmaRefMRad/usable):c.pairSigmaRefMRad/c.minBaselineM)*(1+(1-q)*c.pairSigmaNoiseGain);
-    const minor=clamp(R*sigma,c.minAxisM,c.esmAreaMaxRadiusM);
-    const major=usable>0?clamp(R*R*sigma/usable,minor,c.esmAreaMaxRadiusM):c.esmAreaMaxRadiusM;
-    return {minor,major,sigmaRad:sigma,bEffM:usable,ranged:usable>0&&major/minor<=c.wedgeRatio};
+  // 방출원 종류를 알면 송신 전력을 가정할 수 있고, 전파식 received=P/(1+(R/scale)²)를
+  // 되짚으면 거리가 나온다. 가정이 틀린 만큼 그대로 오차가 되므로 이 경로는 원래 거칠다.
+  // 수신기 1기로도 성립하는 유일한 경로다.
+  function esmSignalRangeEstimate(obs,tr){
+    const rec=Number(obs?.emReceivedMW)||0,emitted=Number(obs?.emEmittedMW)||0;
+    if(!(rec>0)||!(emitted>0))return null;
+    const c=TACTICAL_SENSOR_CONFIG,cls=clamp01(Number(obs.emClassifyQuality)||0);
+    // 트랙마다 고정된 가정 편차 — 프레임마다 거리가 흔들리지 않게 한다.
+    const assumed=emitted*clamp(Number(tr?._esmPowerBias)||1,.55,1.75);
+    const ratio=assumed/rec;
+    if(!(ratio>1.0004))return null; // 포화 근처 — 역제곱을 되짚을 여지가 없다
+    const R=SENSOR_CONFIG.emRangeScaleM*Math.sqrt(ratio-1);
+    if(!(R>0)||!Number.isFinite(R))return null;
+    return {rangeM:R,relSigma:c.signalRelSigmaWorst+(c.signalRelSigmaBest-c.signalRelSigmaWorst)*cls};
+  }
+  // 자함이 방위선을 가로질러 이동한 거리가 곧 합성 기선이 된다(TMA). 안테나 간격이 미터
+  // 단위인 데 반해 이쪽은 km까지 자란다. 표적 방위로 곧장 달리면 수직 성분이 0이라
+  // 아무리 오래 따라가도 거리는 좁혀지지 않는다 — 안테나 쌍과 완전히 같은 기하다.
+  function esmMotionBaseline(tr,observer,bearingRad,nowS){
+    if(!tr||!observer)return {bPerpM:0,spanS:0};
+    if(!Number.isFinite(tr._esmTmaAnchorX)||!Number.isFinite(tr._esmTmaAnchorY)){
+      tr._esmTmaAnchorX=observer.x;tr._esmTmaAnchorY=observer.y;tr._esmTmaAnchorAtS=nowS;
+    }
+    const dx=observer.x-tr._esmTmaAnchorX,dy=observer.y-tr._esmTmaAnchorY;
+    // 앵커 시각은 0이 정당한 값이다(전투 시작 직후). ||로 기본값을 주면 경과가 늘 0이 된다.
+    const anchoredAt=Number.isFinite(tr._esmTmaAnchorAtS)?tr._esmTmaAnchorAtS:nowS;
+    return {bPerpM:Math.abs(dx*Math.sin(bearingRad)-dy*Math.cos(bearingRad)),spanS:Math.max(0,nowS-anchoredAt)};
+  }
+  // 세 갈래를 하나의 거리해로 합친다. 시차 경로(안테나·기동)는 σ_R=R²σ_θ/b 로 들어오고,
+  // 신호세기는 상대오차로 바로 들어온다.
+  function esmRangeSolution(observer,tr,obs,bearingRad,nowS,quality){
+    const c=TACTICAL_SENSOR_CONFIG,noise=1+(1-clamp01(quality))*c.pairSigmaNoiseGain;
+    const ant=esmBaselineForBearing(observer,bearingRad),mot=esmMotionBaseline(tr,observer,bearingRad,nowS),sig=esmSignalRangeEstimate(obs,tr);
+    const R=Math.max(1,sig?sig.rangeM:SENSOR_CONFIG.emCueNominalRangeM);
+    const dfHalf=Math.max(.01,Number(tr?.emBearingHalfRad)||Number(obs?.emBearingHalfRad)||.3);
+    // 1) 위상 간섭계 — 기선에 반비례하는 정밀 방위
+    const antB=ant.bEffM>=c.minBaselineM?ant.bEffM:0;
+    const antSigmaTheta=antB>0?Math.max(c.pairSigmaFloorRad,c.pairSigmaRefMRad/antB)*noise:Infinity;
+    const antRel=antB>0?R*antSigmaTheta/antB:Infinity;
+    // 2) TMA — 방위 자체는 진폭비교 DF라 거칠지만 시간 평균으로 √N만큼 좋아진다
+    const motB=Math.min(c.tmaMaxBaselineM,mot.bPerpM),motSigmaTheta=dfHalf/Math.sqrt(1+mot.spanS/c.tmaSampleTauS)*noise;
+    const motRel=motB>=c.minBaselineM?R*motSigmaTheta/motB:Infinity;
+    // 3) 신호세기
+    const sigRel=sig?sig.relSigma*noise:Infinity;
+    const inv=v=>Number.isFinite(v)&&v>0?1/(v*v):0,w=inv(antRel)+inv(motRel)+inv(sigRel);
+    const relSigma=w>0?Math.max(c.relRangeSigmaFloor,1/Math.sqrt(w)):Infinity;
+    const sigmaTheta=Math.min(antSigmaTheta,motSigmaTheta,dfHalf*noise);
+    return {rangeM:R,relSigma,sigmaThetaRad:sigmaTheta,ranged:Number.isFinite(relSigma)&&relSigma<=c.maxRelRangeSigma,
+      antBaselineM:antB,motionBaselineM:motB,motionSpanS:mot.spanS,signalRangeM:sig?sig.rangeM:null,
+      receiverCount:ant.count,separationM:ant.separationM,hasSignalRange:!!sig};
+  }
+  // 거리해를 타원 두 반축으로 옮긴다. minor는 방위 오차에 따른 횡방향, major는 거리 방향.
+  // 거리를 못 만들면 major가 최대치로 가서 무한히 긴 쐐기로 수렴한다.
+  function esmUncertaintyAxes(sol){
+    const c=TACTICAL_SENSOR_CONFIG,R=Math.max(1,sol.rangeM);
+    const minor=clamp(R*sol.sigmaThetaRad,c.minAxisM,c.esmAreaMaxRadiusM);
+    const major=sol.ranged?clamp(R*sol.relSigma,minor,c.esmAreaMaxRadiusM):c.esmAreaMaxRadiusM;
+    return {minor,major,sigmaRad:sol.sigmaThetaRad,ranged:sol.ranged};
   }
   // RADAR-T0A: ESM 단독 접촉은 정밀 좌표가 아니라 "이 타원 안 어딘가"라는 위치 영역을 만든다.
   // 실제 표적 상태는 유효 EM 관측이 들어온 순간에만 확률적 영역 표본을 만드는 데 사용하며,
@@ -2183,18 +2244,17 @@
     if(active&&target){
       const q=clamp01(Math.max(obs.emQuality||0,obs.emDetectQuality||0));
       const bearing=Number.isFinite(obs.bearing)?obs.bearing:Math.atan2(target.y-observer.y,target.x-observer.x);
-      const baseline=esmBaselineForBearing(observer,bearing);
-      // 관측자는 진짜 거리를 모른다. 축 계산에는 명목 거리를 쓰고, 중심 자체는
-      // 실제 표적을 반드시 포함하도록 확대한다.
-      const nominalR=SENSOR_CONFIG.emCueNominalRangeM;
-      const axes=esmUncertaintyAxes(baseline.bEffM,nominalR,q);
-      tr.esmBaselineM=baseline.bEffM;tr.esmBaselineSeparationM=baseline.separationM;tr.esmReceiverCount=baseline.count;
-      tr.esmAreaAngleRad=bearing;tr.esmAreaRanged=axes.ranged;tr.esmBearingSigmaRad=axes.sigmaRad;
+      const sol=esmRangeSolution(observer,tr,obs,bearing,now,q);
+      const axes=esmUncertaintyAxes(sol);
+      tr.esmBaselineM=sol.antBaselineM;tr.esmBaselineSeparationM=sol.separationM;tr.esmReceiverCount=sol.receiverCount;
+      tr.esmMotionBaselineM=sol.motionBaselineM;tr.esmMotionSpanS=sol.motionSpanS;tr.esmRangeRelSigma=sol.relSigma;
+      tr.esmAreaAngleRad=bearing;tr.esmAreaRanged=sol.ranged;tr.esmBearingSigmaRad=sol.sigmaThetaRad;
+      // 중심은 측정에서 나온다 — 진짜 표적 좌표를 되돌려 쓰지 않는다. 방위선 위 추정 거리에
+      // 놓고, 방위 오차만큼 횡으로 흔든다. 실제 표적을 품는 일은 아래 포괄성 보장이 맡는다.
       const nA=Number.isFinite(tr._esmAreaNoiseAngle)?tr._esmAreaNoiseAngle:0,nS=clamp(tr._esmAreaNoiseScale||.86,.55,.98);
-      // 중심 오차는 시선 방향(거리 불확실)으로 크고 횡방향으로 작다.
-      const alongOff=axes.major*(.22+(1-q)*.2)*nS*Math.cos(nA),crossOff=axes.minor*(.22+(1-q)*.2)*nS*Math.sin(nA);
-      const candidateX=target.x+Math.cos(bearing)*alongOff-Math.sin(bearing)*crossOff;
-      const candidateY=target.y+Math.sin(bearing)*alongOff+Math.cos(bearing)*crossOff;
+      const crossOff=axes.minor*(.22+(1-q)*.2)*nS*Math.sin(nA);
+      const candidateX=observer.x+Math.cos(bearing)*sol.rangeM-Math.sin(bearing)*crossOff;
+      const candidateY=observer.y+Math.sin(bearing)*sol.rangeM+Math.cos(bearing)*crossOff;
       if(!Number.isFinite(tr.esmAreaCenterX)||!Number.isFinite(tr.esmAreaCenterY)){tr.esmAreaCenterX=candidateX;tr.esmAreaCenterY=candidateY;}
       else{const centerBlend=1-Math.exp(-dt*(.38+q*.72));tr.esmAreaCenterX=approachValue(tr.esmAreaCenterX,candidateX,centerBlend);tr.esmAreaCenterY=approachValue(tr.esmAreaCenterY,candidateY,centerBlend);}
       // 포괄성 보장: 실제 표적을 타원 국소 좌표로 옮겨 두 반축을 필요한 만큼 넓힌다.
@@ -2207,8 +2267,8 @@
       const blend=1-Math.exp(-dt*(.32+q*.9));
       tr.esmAreaMinorM=approachValue(Math.max(wantMinor,Number(tr.esmAreaMinorM)||wantMinor),wantMinor,blend);
       tr.esmAreaMajorM=approachValue(Math.max(wantMajor,Number(tr.esmAreaMajorM)||wantMajor),wantMajor,blend);
-      // 거리 추정은 기선이 실제로 성립할 때만 실어 보낸다.
-      if(axes.ranged){
+      // 거리 추정은 상대 오차가 공표 가능한 수준일 때만 실어 보낸다.
+      if(sol.ranged){
         const alongCenter=(tr.esmAreaCenterX-observer.x)*Math.cos(bearing)+(tr.esmAreaCenterY-observer.y)*Math.sin(bearing);
         tr.esmRangeEstimateM=Math.max(1,alongCenter);tr.esmRangeSigmaM=tr.esmAreaMajorM;
       }else{tr.esmRangeEstimateM=null;tr.esmRangeSigmaM=null;}
@@ -2241,11 +2301,19 @@
     const r=Math.abs(Number(rad)||0),deg=r*180/Math.PI;
     return deg>=.5?`±${deg.toFixed(deg>=5?0:1)}°`:`±${(r*1000).toFixed(r*1000>=1?1:2)}mrad`;
   }
+  // 거리를 무엇으로 만들었는지 밝힌다 — 플레이어가 배치와 기동의 효과를 바로 읽을 수 있다.
+  function esmRangeSourceLabel(tr){
+    const src=[];
+    if((tr?.esmBaselineM||0)>0)src.push(`기선 ${tr.esmBaselineM.toFixed(0)}m`);
+    if((tr?.esmMotionBaselineM||0)>=TACTICAL_SENSOR_CONFIG.minBaselineM)src.push(`기동 ${(tr.esmMotionBaselineM/1000).toFixed(1)}km`);
+    if(!src.length)src.push('신호세기');
+    return src.join(' + ');
+  }
   // 쐐기와 타원은 서로 다른 것을 안다. 거리를 모르면 모른다고 적는다.
   function esmAreaRangeLabel(tr){
     if(!tr)return '거리 미상';
     if(!tr.esmAreaRanged||!Number.isFinite(tr.esmRangeEstimateM))return `방위 ${esmBearingPrecisionLabel(tr.emBearingHalfRad||.35)} · 거리 미상`;
-    return `방위 ${esmBearingPrecisionLabel(tr.esmBearingSigmaRad)} · 거리 ${(tr.esmRangeEstimateM/1000).toFixed(1)}±${((tr.esmRangeSigmaM||0)/1000).toFixed(1)}km · 기선 ${(tr.esmBaselineM||0).toFixed(0)}m`;
+    return `방위 ${esmBearingPrecisionLabel(tr.esmBearingSigmaRad)} · 거리 ${(tr.esmRangeEstimateM/1000).toFixed(1)}±${((tr.esmRangeSigmaM||0)/1000).toFixed(1)}km · ${esmRangeSourceLabel(tr)}`;
   }
   function updateSensorFusionTrack(observer,target,obs,dt,{precision=true}={}){
     if(!observer.sensorTracks)observer.sensorTracks={};
@@ -5396,13 +5464,16 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
       ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(192,171,232,.84)';ctx.fillText(sub,lx,ly+5);
     }else{
       const c=worldToScreen(track.esmAreaCenterX,track.esmAreaCenterY);
-      const majPx=Math.max(6,(track.esmAreaMajorM||0)*camera.zoom),minPx=Math.max(4,(track.esmAreaMinorM||0)*camera.zoom);
+      const majPx=Math.max(6,(track.esmAreaMajorM||0)*camera.zoom);
+      // 간섭계 방위가 워낙 정밀해 횡축이 실 한 올처럼 얇아진다. 그리기에서만 종횡비를
+      // 제한한다 — 횡축을 넓히는 쪽이라 표시 영역이 모델보다 커질 뿐 결코 좁아지지 않는다.
+      const minPx=Math.max(4,(track.esmAreaMinorM||0)*camera.zoom,majPx/10);
       ctx.setLineDash([7,7]);ctx.beginPath();ctx.ellipse(c.x,c.y,majPx,minPx,a,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(c.x-5,c.y);ctx.lineTo(c.x+5,c.y);ctx.moveTo(c.x,c.y-5);ctx.lineTo(c.x,c.y+5);ctx.stroke();
       const topPx=Math.hypot(majPx*Math.sin(a),minPx*Math.cos(a)); // 회전 타원의 수직 반경
       const rkm=(track.esmRangeEstimateM||0)/1000,skm=(track.esmRangeSigmaM||0)/1000;
       ctx.fillStyle='rgba(225,207,255,.96)';ctx.fillText(`${label} · 방위 ${esmBearingPrecisionLabel(track.esmBearingSigmaRad)} · 거리 ${rkm.toFixed(1)}±${skm.toFixed(1)}km`,c.x,c.y-topPx-8);
-      ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(192,171,232,.84)';ctx.fillText(`${sub} · 기선 ${(track.esmBaselineM||0).toFixed(0)}m`,c.x,c.y-topPx+3);
+      ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(192,171,232,.84)';ctx.fillText(`${sub} · ${esmRangeSourceLabel(track)}`,c.x,c.y-topPx+3);
     }
     ctx.restore();
   }
@@ -6152,37 +6223,83 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       const rotated=mkShip([esm('p',0,-15),esm('s',0,15)],Math.PI/2); // 함이 90° 돌면 좌우 쌍이 정횡 표적을 잡는다
       check('hull-rotation-applied',Math.abs(esmBaselineForBearing(rotated,ABEAM).bEffM-30)<1e-6,{bEff:esmBaselineForBearing(rotated,ABEAM).bEffM});
 
-      // ── 축 공식: b가 넓을수록 좋아지고, R²로 나빠진다 ──────────────────
-      const axAt=(b,R,q=1)=>esmUncertaintyAxes(b,R,q);
-      check('zero-baseline-is-wedge',axAt(0,12000).ranged===false&&axAt(0,12000).major===TACTICAL_SENSOR_CONFIG.esmAreaMaxRadiusM,{a:axAt(0,12000)});
-      check('below-min-baseline-is-wedge',axAt(TACTICAL_SENSOR_CONFIG.minBaselineM*.5,12000).ranged===false,{a:axAt(1,12000)});
-      const sweepB=[20,24,30,36,48].map(b=>axAt(b,12000).major);
-      check('wider-baseline-never-worse',sweepB.every((v,i)=>i===0||v<=sweepB[i-1]+1e-9),{sweepB});
-      const majorsAlwaysGeMinor=[[8,9000],[16,12000],[24,20000],[48,40000],[48,80000],[2,5000]].every(([b,R])=>{const a=axAt(b,R);return a.major>=a.minor;});
-      check('major-never-below-minor',majorsAlwaysGeMinor,{});
-      // 포화되지 않는 구간에서 major ∝ R²
-      const r20=axAt(48,20000).major,r40=axAt(48,40000).major;
-      check('range-error-scales-with-r-squared',Math.abs(r40/r20-4)<.02,{r20,r40,ratio:r40/r20});
+      // ── 축 공식: 거리해를 타원으로 옮긴다 ─────────────────────────────
+      const sol=(o)=>Object.assign({rangeM:12000,relSigma:.3,sigmaThetaRad:.001,ranged:true},o);
+      check('unranged-solution-becomes-wedge',esmUncertaintyAxes(sol({ranged:false})).major===TACTICAL_SENSOR_CONFIG.esmAreaMaxRadiusM,{a:esmUncertaintyAxes(sol({ranged:false}))});
+      const axSweep=[.6,.45,.3,.2].map(r=>esmUncertaintyAxes(sol({relSigma:r})).major);
+      check('tighter-relative-error-shrinks-major',axSweep.every((v,i)=>i===0||v<=axSweep[i-1]+1e-9),{axSweep});
+      const geCases=[[.5,9000,.05],[.3,12000,.001],[.2,40000,.0002],[.6,3000,.4]];
+      check('major-never-below-minor',geCases.every(([r,R,s])=>{const a=esmUncertaintyAxes(sol({relSigma:r,rangeM:R,sigmaThetaRad:s}));return a.major>=a.minor;}),{});
+      check('minor-tracks-bearing-precision',esmUncertaintyAxes(sol({rangeM:40000,sigmaThetaRad:.05})).minor>esmUncertaintyAxes(sol({rangeM:40000,sigmaThetaRad:.001})).minor,{});
 
-      // ── 파이프라인: 좌우 쌍만 → 정면 타원, 정횡 쐐기 ───────────────────
-      const runPipe=(ship,bearing,dist,steps=60)=>{
-        const tgt={x:ship.x+Math.cos(bearing)*dist,y:ship.y+Math.sin(bearing)*dist};
+      // ── 세 측거 경로 ──────────────────────────────────────────────────
+      const emObs=(o={})=>Object.assign({emDetectQuality:1,emQuality:1,emBearingHalfRad:.16,emClassifyQuality:1,emReceivedMW:20,emEmittedMW:400,bearing:0},o);
+      check('signal-range-needs-emission',esmSignalRangeEstimate(emObs({emEmittedMW:0}),{_esmPowerBias:1})===null,{});
+      check('signal-range-inverts-propagation',(()=>{
+        const r=esmSignalRangeEstimate(emObs(),{_esmPowerBias:1});
+        // received = P/(1+(R/scale)²) 를 정확히 되짚어야 한다
+        const want=SENSOR_CONFIG.emRangeScaleM*Math.sqrt(400/20-1);
+        return r&&Math.abs(r.rangeM-want)<1;
+      })(),{});
+      check('poor-classification-widens-signal-sigma',esmSignalRangeEstimate(emObs({emClassifyQuality:0}),{_esmPowerBias:1}).relSigma>esmSignalRangeEstimate(emObs({emClassifyQuality:1}),{_esmPowerBias:1}).relSigma,{});
+      check('signal-range-works-with-one-receiver',(()=>{
+        const t={_esmPowerBias:1,emBearingHalfRad:.16};
+        return esmRangeSolution(one,t,emObs(),AHEAD,0,1).ranged===true;
+      })(),{});
+      // TMA: 방위선을 가로지른 이동만 기선이 된다
+      const tmaShip=(px,py)=>Object.assign(mkShip([esm('a',0,0)]),{x:px,y:py});
+      check('motion-across-bearing-builds-baseline',(()=>{
+        const t={};esmMotionBaseline(t,tmaShip(0,0),AHEAD,0);
+        return Math.abs(esmMotionBaseline(t,tmaShip(0,2000),AHEAD,60).bPerpM-2000)<1e-6;
+      })(),{});
+      check('motion-along-bearing-builds-nothing',(()=>{
+        const t={};esmMotionBaseline(t,tmaShip(0,0),AHEAD,0);
+        return esmMotionBaseline(t,tmaShip(9000,0),AHEAD,60).bPerpM<1e-6;
+      })(),{});
+      check('longer-observation-averages-bearing-down',(()=>{
+        const mk=(span,perp)=>{const t={emBearingHalfRad:.16,_esmTmaAnchorX:0,_esmTmaAnchorY:0,_esmTmaAnchorAtS:0,_esmPowerBias:1};
+          return esmRangeSolution(Object.assign(mkShip([esm('a',0,0)]),{x:0,y:perp}),t,emObs(),AHEAD,span,1).relSigma;};
+        return mk(240,3000)<mk(20,3000);
+      })(),{});
+
+      // ── 파이프라인 ────────────────────────────────────────────────────
+      // 수신 전력은 실제 거리에서 전파식으로 만든다 — 관측자가 진짜 거리를 훔쳐보지 않는다.
+      const EMIT=520;
+      const runPipe=(ship,bearing,dist,{steps=60,drift=null,cls=1,bias=1}={})=>{
+        const sx=ship.x,sy=ship.y;
+        const tgt={x:sx+Math.cos(bearing)*dist,y:sy+Math.sin(bearing)*dist};
         const tr={emOnly:true,rangeKnown:false,emBearingHalfRad:.16,emBands:[],esmAreaCenterX:null,esmAreaCenterY:null,
           esmAreaMajorM:0,esmAreaMinorM:0,esmAreaAngleRad:0,esmAreaRanged:false,esmAreaConfidence:0,esmAreaAgeS:99,
-          _esmAreaNoiseAngle:1.2,_esmAreaNoiseScale:.86};
-        const obs={emDetectQuality:1,emQuality:1,emBearingHalfRad:.16,bearing};
-        for(let i=0;i<steps;i++){battle.time+=.05;updateEsmUncertaintyArea(tr,ship,tgt,obs,.05);}
+          _esmAreaNoiseAngle:1.2,_esmAreaNoiseScale:.86,_esmPowerBias:bias};
+        for(let i=0;i<steps;i++){
+          battle.time+=.05;
+          if(drift){ship.x=sx+drift.x*(i/steps);ship.y=sy+drift.y*(i/steps);}
+          const d=Math.hypot(tgt.x-ship.x,tgt.y-ship.y),bg=Math.atan2(tgt.y-ship.y,tgt.x-ship.x);
+          const obs={emDetectQuality:1,emQuality:1,emBearingHalfRad:.16,emClassifyQuality:cls,bearing:bg,
+            emReceivedMW:EMIT/(1+Math.pow(Math.max(1,d)/SENSOR_CONFIG.emRangeScaleM,2)),emEmittedMW:EMIT};
+          updateEsmUncertaintyArea(tr,ship,tgt,obs,.05);
+        }
+        ship.x=sx;ship.y=sy;
         return {tr,tgt};
       };
+      // 사용자 목표: 센서만 띄우면 ESM 1기로도 '대강 이쯤'이 나와야 한다.
+      const solo=runPipe(one,AHEAD,12000);
+      check('single-receiver-still-gives-rough-range',solo.tr.esmAreaRanged===true&&Number.isFinite(solo.tr.esmRangeEstimateM),{ranged:solo.tr.esmAreaRanged,range:solo.tr.esmRangeEstimateM,rel:solo.tr.esmRangeRelSigma});
+      check('rough-range-stays-rough',solo.tr.esmRangeRelSigma>=TACTICAL_SENSOR_CONFIG.relRangeSigmaFloor&&solo.tr.esmRangeRelSigma<=TACTICAL_SENSOR_CONFIG.maxRelRangeSigma,{rel:solo.tr.esmRangeRelSigma});
+      check('unclassified-emitter-withholds-range',runPipe(one,AHEAD,12000,{cls:0}).tr.esmAreaRanged===false,{});
+      // 기하는 여전히 중요하다 — 이진 유무가 아니라 정밀도 차이로 나타난다.
       const beamHeadOn=runPipe(beam,AHEAD,12000),beamSide=runPipe(beam,ABEAM,12000);
-      check('beam-pair-head-on-publishes-range',beamHeadOn.tr.esmAreaRanged===true&&Number.isFinite(beamHeadOn.tr.esmRangeEstimateM),{ranged:beamHeadOn.tr.esmAreaRanged,range:beamHeadOn.tr.esmRangeEstimateM,baseline:beamHeadOn.tr.esmBaselineM});
-      check('beam-pair-abeam-withholds-range',beamSide.tr.esmAreaRanged===false&&beamSide.tr.esmRangeEstimateM===null,{ranged:beamSide.tr.esmAreaRanged,baseline:beamSide.tr.esmBaselineM});
+      check('head-on-beats-abeam-for-beam-pair',beamHeadOn.tr.esmRangeRelSigma<beamSide.tr.esmRangeRelSigma,{head:beamHeadOn.tr.esmRangeRelSigma,side:beamSide.tr.esmRangeRelSigma});
       const crossSide=runPipe(cross,ABEAM,12000);
-      check('fore-aft-restores-abeam-range',crossSide.tr.esmAreaRanged===true&&Number.isFinite(crossSide.tr.esmRangeEstimateM),{ranged:crossSide.tr.esmAreaRanged,baseline:crossSide.tr.esmBaselineM,range:crossSide.tr.esmRangeEstimateM});
-      check('wider-baseline-tightens-published-sigma',crossSide.tr.esmRangeSigmaM<=beamHeadOn.tr.esmRangeSigmaM,{cross:crossSide.tr.esmRangeSigmaM,beam:beamHeadOn.tr.esmRangeSigmaM});
-      // 실현 가능한 좌우 기선(<=18m)은 명목 12km에서 아직 거리를 공표하지 못한다 — 전후 쌍이 필요하다.
+      check('fore-aft-pair-rescues-abeam-precision',crossSide.tr.esmRangeRelSigma<beamSide.tr.esmRangeRelSigma,{cross:crossSide.tr.esmRangeRelSigma,beam:beamSide.tr.esmRangeRelSigma});
+      // 실현 가능한 좌우 기선(16m)도 이제 거리를 만든다 — 상대오차 기준으로 바꾼 결과.
       const narrow=mkShip([esm('p',0,-8),esm('s',0,8)]);
-      check('narrow-beam-pair-stays-wedge',runPipe(narrow,AHEAD,12000).tr.esmAreaRanged===false,{bEff:esmBaselineForBearing(narrow,AHEAD).bEffM});
+      check('realistic-beam-pair-now-ranges',runPipe(narrow,AHEAD,12000).tr.esmAreaRanged===true,{bEff:esmBaselineForBearing(narrow,AHEAD).bEffM});
+      // 기동이 거리를 좁힌다. 방위선을 가로질러야만 좁혀진다.
+      const still=runPipe(one,AHEAD,12000),crossed=runPipe(one,AHEAD,12000,{drift:{x:0,y:3000}}),chased=runPipe(one,AHEAD,12000,{drift:{x:3000,y:0}});
+      check('maneuver-across-bearing-tightens-range',crossed.tr.esmRangeRelSigma<still.tr.esmRangeRelSigma,{crossed:crossed.tr.esmRangeRelSigma,still:still.tr.esmRangeRelSigma});
+      check('chasing-along-bearing-gains-little',chased.tr.esmRangeRelSigma>crossed.tr.esmRangeRelSigma,{chased:chased.tr.esmRangeRelSigma,crossed:crossed.tr.esmRangeRelSigma});
+      check('range-never-becomes-a-precision-fix',[solo,beamHeadOn,crossSide,crossed].every(r=>!(r.tr.esmRangeRelSigma<TACTICAL_SENSOR_CONFIG.relRangeSigmaFloor-1e-9)),{floor:TACTICAL_SENSOR_CONFIG.relRangeSigmaFloor});
 
       // ── 화면이 거짓말하지 않을 것: 방위·거리를 쓸어도 항상 실제 표적을 포함 ──
       let miss=0,worst=null;
@@ -6203,7 +6320,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       }
 
       // ── 표시 문구: 쐐기는 거리를 적지 않고, 타원은 기선을 밝힌다 ───────
-      const wedgeText=esmAreaRangeLabel(beamSide.tr),ellipseText=esmAreaRangeLabel(crossSide.tr);
+      const wedgeText=esmAreaRangeLabel(runPipe(one,AHEAD,12000,{cls:0}).tr),ellipseText=esmAreaRangeLabel(crossSide.tr);
       check('wedge-label-withholds-range',wedgeText.includes('거리 미상')&&!wedgeText.includes('기선'),{wedgeText});
       check('ellipse-label-shows-range-and-baseline',/거리 \d/.test(ellipseText)&&ellipseText.includes('기선 48m'),{ellipseText});
       check('bearing-precision-never-collapses-to-zero',!/±0\.0°/.test(ellipseText)&&!/±0\.0°/.test(wedgeText),{ellipseText,wedgeText});
