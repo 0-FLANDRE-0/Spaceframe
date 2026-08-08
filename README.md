@@ -10,8 +10,8 @@
 
 ## 개발 상태
 
-프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.29.html`의 `<title>`에 표기된
-**1.31.29** 입니다.
+프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.30.html`의 `<title>`에 표기된
+**1.31.30** 입니다.
 
 게임 파일 이름은 `Spaceframe_v<버전>.html` 형식이며 버전이 올라갈 때마다 바뀝니다.
 저장소 최상위에는 항상 이 파일 하나만 존재합니다.
@@ -27,7 +27,7 @@
 ```
 git clone https://github.com/0-FLANDRE-0/Spaceframe.git
 cd Spaceframe
-# Spaceframe_v1.31.29.html 을 브라우저에서 열기
+# Spaceframe_v1.31.30.html 을 브라우저에서 열기
 ```
 
 파일을 더블클릭하거나 브라우저로 끌어다 놓아도 됩니다(`file://` 로 동작합니다).
@@ -46,7 +46,7 @@ cd Spaceframe
 
 게임 로직은 게임 파일 안의 IIFE 하나에 담겨 있어 바깥에서 직접 호출할 수
 없습니다. 대신 페이지에 자체 테스트 하네스가 `window.__SPACEFRAME_*_TEST__`
-형태로 노출되어 있습니다(현재 37개). 브라우저 콘솔에서 다음과 같이 실행합니다.
+형태로 노출되어 있습니다(현재 38개). 브라우저 콘솔에서 다음과 같이 실행합니다.
 
 ```js
 Object.keys(window)
