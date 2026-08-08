@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#020508" />
-  <title>SPACEFRAME GRID PROTOTYPE 1.31.27</title>
+  <title>SPACEFRAME GRID PROTOTYPE 1.31.29</title>
   <style>
     :root{--bg:#020508;--text:#eaf7ff;--muted:#91aabb;--line:rgba(111,190,229,.35);--accent:#69d4ff;--danger:#ff7373}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -322,7 +322,7 @@
     <section id="buildScene" class="scene active" aria-label="함선 설계 화면">
       <canvas id="buildCanvas" aria-label="함선 설계 격자"></canvas>
       <div class="buildTop">
-        <div class="brand">SPACEFRAME<small id="designRoleLabel">ALLY HULL LAB · 112×64m · PROTO 1.31.27</small></div>
+        <div class="brand">SPACEFRAME<small id="designRoleLabel">ALLY HULL LAB · 112×64m · PROTO 1.31.29</small></div>
         <div class="designSwitch" aria-label="설계 함선 선택">
           <button id="editPlayer" class="active" data-side="player">아군 설계</button><button id="editEnemy" data-side="enemy">적함 설계</button>
         </div>
@@ -504,7 +504,7 @@
             <div class="sensorPanelCard"><span>ESM RECEIVER</span><b id="sensorEsmStatus">미탑재</b></div>
             <div class="sensorPanelCard"><span>EM AREA CONTACT</span><b id="sensorEsmContacts">0개</b></div>
             <div class="sensorPanelCard"><span>PRECISE TRACK</span><b id="sensorPreciseTracks">0개</b></div>
-            <div class="sensorPanelCard"><span>ACTIVE RADAR</span><b id="sensorRadarStatus">미탑재 · T0A</b></div>
+            <div class="sensorPanelCard"><span>ACTIVE RADAR</span><b id="sensorRadarStatus">미탑재</b></div>
           </div>
           <div class="sensorContactList"><div class="sensorContactListHead"><span>접촉 그림</span><span id="sensorContactSummary">NO CONTACT</span></div><div id="sensorContactRows"></div></div>
           <div class="sensorPanelFoot"><span>ESM 불확실성 영역: 내부 어딘가에 방출원 존재</span><b id="sensorPanelHint">축소하면 전술 센서 화면 자동 전환</b></div>
@@ -557,8 +557,8 @@
     <section class="sortieSetupPanel" role="dialog" aria-modal="true" aria-labelledby="sortieSetupTitle">
       <h2 id="sortieSetupTitle">출격 조건 설정</h2>
       <p>시작 거리에 따라 EO·IR 접촉 품질과 최초 사격 가능 시점이 달라집니다. 함선은 서로 정면으로 마주본 상태에서 출격합니다.</p>
-      <label class="sortieDistanceRow"><span>시작 거리</span><b id="sortieDistanceValue">5.0km</b><input id="sortieDistance" type="range" min="1000" max="50000" step="500" value="5000" /></label>
-      <div class="sortiePresets"><button type="button" data-sortie-distance="1000">1km</button><button type="button" data-sortie-distance="3000">3km</button><button type="button" data-sortie-distance="5000">5km</button><button type="button" data-sortie-distance="8000">8km</button><button type="button" data-sortie-distance="15000">15km</button><button type="button" data-sortie-distance="30000">30km</button><button type="button" data-sortie-distance="50000">50km</button></div>
+      <label class="sortieDistanceRow"><span>시작 거리</span><b id="sortieDistanceValue">5.0km</b><input id="sortieDistance" type="range" min="1000" max="250000" step="1000" value="5000" /></label>
+      <div class="sortiePresets"><button type="button" data-sortie-distance="1000">1km</button><button type="button" data-sortie-distance="3000">3km</button><button type="button" data-sortie-distance="5000">5km</button><button type="button" data-sortie-distance="8000">8km</button><button type="button" data-sortie-distance="15000">15km</button><button type="button" data-sortie-distance="30000">30km</button><button type="button" data-sortie-distance="60000">60km</button><button type="button" data-sortie-distance="120000">120km</button><button type="button" data-sortie-distance="200000">200km</button></div>
       <div id="sortieSummary" class="sortieSummary"></div>
       <div class="sortieActions"><button id="sortieCancel" type="button">취소</button><button id="sortieLaunch" class="launch" type="button">출격</button></div>
     </section>
@@ -731,6 +731,7 @@
     reactor:Object.freeze({id:'reactor-fusion',tool:'reactor',sw:4,sh:4,idleMW:0,maxMW:0,generationMW:REACTOR_OUTPUT_MW,bufferMJ:REACTOR_BUFFER_MJ,sizeClass:'S5',badge:'F',name:'고출력 핵융합로',subtitle:'기본형 반응로',footprint:'4×4m',mass:150,hp:430,description:'함선의 주 전력원. 대형 함선용 고출력 핵융합 발전기와 캐패시터 블록을 통합한 기본형 반응로.',specs:()=>[['설치 크기','4×4m'],['모듈 질량','150t'],['모듈 내구도','430'],['발전량',formatPowerMW(REACTOR_OUTPUT_MW)],['캐패시터',formatEnergyMJ(REACTOR_BUFFER_MJ)],['유지 전력','0MW'],['최대 전력','0MW'],['역할','발전 · 캐패시터 공급']] }),
     ir:Object.freeze({id:'ir-passive-array',tool:'ir',sw:.5,sh:1,idleMW:5,maxMW:16,sizeClass:'S1',badge:'IR',name:'IR 탐지 어레이',subtitle:'기본형 열원 방위각 센서',footprint:'0.5×1.0m',mass:9,hp:58,description:'패시브 IR 센서. 장거리에서 열원의 방향과 대략적인 세기를 잡아낸다. 정확한 거리와 형상은 직접 제공하지 않는다.',specs:()=>[['설치 크기','0.5×1.0m'],['모듈 질량','9t'],['모듈 내구도','58'],['전력 소비','5 → 16MW (냉각 부하 연동)'],['초점면 냉각','40K 극저온'],['냉각 소비 증가','구획 온도에 따라 최대 5배'],['탐지 정보','방위각 범위 · 열원 세기'],['특성','패시브 · 거리 부정확 · EO 탐색 큐 제공']] }),
     esm:Object.freeze({id:'esm-passive-receiver',tool:'esm',sw:1,sh:1,idleMW:3,maxMW:11,sizeClass:'S1',badge:'ESM',name:'ESM 수신 어레이',subtitle:'수동 전자신호 수신 · 방위 및 대역 분류',footprint:'1×1m',mass:11,hp:54,description:'적함이 스스로 흘리는 전자기 신호를 수동으로 받는다. EM은 장갑과 격벽을 거의 그대로 투과하므로 함체에 가려지지 않으며, 이 수신기 역시 함 내부 깊숙이 묻어 보호할 수 있다. 방위만 제공하고 거리는 제공하지 않는다 — 신호가 강해질수록 방위가 좁혀진다. 수동이므로 켜도 아군 위치가 드러나지 않는다.',specs:()=>[['설치 크기','1×1m'],['모듈 질량','11t'],['모듈 내구도','54'],['전력 소비','3 → 11MW'],['탐지 정보','방위 범위 · 신호 세기 · 방출원 대역'],['수신 대역',EM_BAND_ORDER.map(id=>EM_BANDS[id].short).join(' · ')],['특성','수동 · 자기 노출 없음 · 거리 미제공 · 내부 설치 가능'],['제약','단독으로는 자동사격 트랙 불가 — EO/IR 확인 필요']] }),
+    radar:Object.freeze({id:'radar-s5-rotating-pesa',tool:'radar',sw:2.5,sh:2.5,idleMW:14,maxMW:210,sizeClass:'S5',badge:'RDR',name:'2면 회전식 PESA 어레이',subtitle:'능동 탐색·추적 · 정밀 거리 및 거리변화율',footprint:'2.5×2.5m',mass:96,hp:120,description:'스스로 전파를 쏘아 되돌아온 반사를 듣는 유일한 센서다. 왕복 전파라 수신 전력이 거리의 4제곱에 반비례하지만, 그 대신 다른 어떤 센서보다 멀리서 표적을 잡고 방위와 함께 정밀한 거리를 즉시 제공한다. 배면 두 면이 함께 회전하며 각 면은 정면 기준 ±60°를 전자식으로 조향한다 — 순간 커버리지는 240°이고 남은 사각은 회전이 쓸고 지나간다. 켜는 순간 강력한 전자기 신호를 방출하므로 상대 ESM에 자신의 존재와 방위를 그대로 넘겨준다.',specs:()=>[['설치 크기','2.5×2.5m'],['모듈 질량','96t'],['모듈 내구도','120'],['전력 소비','14 → 210MW'],['탐지 정보','방위 · 정밀 거리 · 거리변화율 · 반사 세기'],['안테나 구성','2면 회전식 PESA · 각 면 전자 조향 ±60°'],['순간 커버리지','240° (사각 60° × 2)'],['회전 주기','4.0초 · 재방문 2.0초'],['빔폭','2.6°'],['동시 추적','최대 24개 표적'],['탐지 거리','통상 자세 200km 내외 · 표적 자세에 따라 150~310km'],['특성','능동 · 정밀 거리 제공 · 방출로 자기 위치 노출'],['제약','켜는 즉시 상대 ESM에 탐지됨 — EMCON 판단 필요']] }),
     eo:Object.freeze({id:'eo-lrf-array',tool:'eo',sw:.5,sh:.5,idleMW:2,maxMW:9,sizeClass:'S1',badge:'EO',name:'EO/LRF 통합 탐색·추적 어레이',subtitle:'광역 광학 탐색 · 협시야 추적 · 펄스 레이저 거리측정',footprint:'0.5×0.5m',mass:7,hp:62,description:'넓은 부채꼴을 패시브 광학으로 탐색한 뒤 포착한 표적을 협시야로 확대 추적한다. 안정된 추적에는 펄스 레이저 거리측정기를 사용해 정밀 거리를 제공한다.',specs:()=>[['설치 크기','0.5×0.5m'],['모듈 질량','7t'],['모듈 내구도','62'],['전력 소비','2 → 9MW (LRF 조사 시 증가)'],['광역 탐색 시야','노출도에 따라 ±12° → ±55°'],['협시야 추적','±3° · 최대 2개 표적'],['탐지 기준','0.10mrad 이상 · 원거리 점접촉'],['식별 단계','0.65mrad 크기/방향 · 1.80mrad 함체 윤곽 · 3.50mrad 외부 모듈'],['내부 분석','EO 단독으로 제공하지 않음'],['LRF 실용거리','18km'],['LRF 거리 오차','기준 ±4m'],['LRF 갱신','최대 4Hz'],['보호막 광학 식별','1.35mrad부터 가능 · 별도 식별 품질'],['특성','광역 탐색은 패시브 · LRF 사용 시 능동 조사']] }),
     fusion:Object.freeze({id:'sensor-fusion-node',tool:'fusion',sw:1,sh:1,idleMW:2,maxMW:9,sizeClass:'S1',badge:'SF',name:'센서 통합 모듈',subtitle:'기준형 다중 센서 관측·트랙 융합 노드',footprint:'1×1m',mass:12,hp:72,maxSensorInputs:8,maxTracks:8,precisionTracks:2,fusionRate:1.18,description:'EO·IR 등 개별 센서의 원시 관측을 시간축에서 결합해 함선 공용 표적 트랙을 생성한다. 자체 탐지 능력이나 무장 선행 계산 능력은 없다.',specs:()=>[['설치 크기','1×1m'],['모듈 질량','12t'],['모듈 내구도','72'],['전력 소비','2 → 9MW'],['센서 입력','최대 8개'],['동시 트랙','최대 8개'],['정밀 트랙','최대 2개'],['출력','위치 · 속도 · 불확실성 통합 트랙']] }),
     fcs:Object.freeze({id:'fcs-ballistic-node',tool:'fcs',sw:.5,sh:1,idleMW:1,maxMW:6,sizeClass:'S1',badge:'C',name:'사격통제 컴퓨터',subtitle:'기준형 무장 통제·사격해 계산 노드',footprint:'0.5×1.0m',mass:8,hp:65,maxTurrets:4,maxTargets:1,maxLeadTimeS:6,solutionUpdateHz:10,dispersionScale:.88,description:'센서 통합 모듈이 만든 표적 트랙을 받아 무기별 선행점, 발사 조건과 포탑 정렬 명령을 계산한다. 자체 탐지나 트랙 융합 능력은 없다.',specs:()=>[['설치 크기','0.5×1.0m'],['모듈 질량','8t'],['모듈 내구도','65'],['전력 소비','1 → 6MW'],['포탑 채널','최대 4기'],['동시 표적','1개'],['사격해 갱신','10Hz'],['최대 예측','6초'],['입력','센서 통합 트랙'],['출력','무기별 선행점 · 발사 허가 · 포탑 정렬']] }),
@@ -761,7 +762,7 @@
     fusion:Object.freeze({idleMW:2,maxMW:9,label:'센서 통합'}),
     fcs:Object.freeze({idleMW:1,maxMW:6,label:'사격통제 컴퓨터'})
   });
-  const MODULE_INSTALL_TYPES=Object.freeze(['reactor','engine','ir','eo','esm','fusion','fcs','gun','ammo','shield','heatsink']);
+  const MODULE_INSTALL_TYPES=Object.freeze(['reactor','engine','ir','eo','esm','radar','fusion','fcs','gun','ammo','shield','heatsink']);
   const MODULE_TYPE_REGISTRY=Object.freeze({
     reactor:Object.freeze({id:'reactor',toolGroup:'basic',requiredForLaunchLabel:'핵융합로',capabilities:Object.freeze(['powerProducer','thermalDevice','volatile','thermalRunaway']),profileFor:()=>SINGLETON_MODULE_PROFILES.reactor,selectedProfile:()=>SINGLETON_MODULE_PROFILES.reactor,resistance:18,thermalProfileKey:'reactor',thermalReactionKey:'reactor',thermalProcessHookId:'reactorRunaway',burningHeatMW:420,radarExposureClass:'internal',radarFactor:.5,sectorRole:Object.freeze({key:'reactor',short:'반응로',name:'반응로실',priority:100}),destructionHookId:'reactorContainmentBreach'}),
     engine:Object.freeze({id:'engine',toolGroup:'basic',requiredForLaunchLabel:'엔진',capabilities:Object.freeze(['powerConsumer','propulsion','surfaceMounted','externalRadarReturn','thermalDevice']),profileFor:()=>SINGLETON_MODULE_PROFILES.engine,selectedProfile:()=>SINGLETON_MODULE_PROFILES.engine,resistance:12,thermalProfileKey:'engine',thermalReactionKey:'engine',burningHeatMW:220,radarExposureClass:'surface',radarFactor:1.1,sectorRole:Object.freeze({key:'engine',short:'추진',name:'추진기관실',priority:80})}),
@@ -770,6 +771,10 @@
     // ESM은 EO/IR과 달리 외피 노출이 필요 없다. EM이 함체를 투과하므로 내부에 묻어 장갑으로 보호할 수 있고,
     // 그래서 surfaceMounted·externalRadarReturn을 갖지 않으며 노출 등급도 internal이다.
     esm:Object.freeze({id:'esm',toolGroup:'advanced',capabilities:Object.freeze(['powerConsumer','sensor','passiveSensor','sectorSensorOnly','thermalDevice']),profileFor:()=>SINGLETON_MODULE_PROFILES.esm,selectedProfile:()=>SINGLETON_MODULE_PROFILES.esm,resistance:7,thermalProfileKey:'eo',thermalReactionKey:'sensor',burningHeatMW:180,radarExposureClass:'internal',radarFactor:.55}),
+    // 레이더는 이 게임의 유일한 능동 센서다(activeSensor). 회전하는 대형 어레이라
+    // 외피 위로 솟아 있어야 하고, 그래서 노출 등급이 elevated이며 자기 RCS도 가장 크다 —
+    // 멀리 보는 대가로 자신이 잘 보인다는 거래가 모듈 정의 단계에서부터 성립한다.
+    radar:Object.freeze({id:'radar',toolGroup:'advanced',capabilities:Object.freeze(['powerConsumer','sensor','activeSensor','sectorSensorOnly','surfaceMounted','externalRadarReturn','thermalDevice']),profileFor:()=>SINGLETON_MODULE_PROFILES.radar,selectedProfile:()=>SINGLETON_MODULE_PROFILES.radar,resistance:9,thermalProfileKey:'eo',thermalReactionKey:'sensor',burningHeatMW:260,radarExposureClass:'elevated',radarFactor:1.6,sectorRole:Object.freeze({key:'radar',short:'레이더',name:'레이더실',priority:56})}),
     fusion:Object.freeze({id:'fusion',toolGroup:'advanced',capabilities:Object.freeze(['powerConsumer','sensorFusion','thermalDevice']),profileFor:()=>SINGLETON_MODULE_PROFILES.fusion,selectedProfile:()=>SINGLETON_MODULE_PROFILES.fusion,resistance:8,thermalProfileKey:'fcs',thermalReactionKey:'sensor',burningHeatMW:220,radarExposureClass:'internal',radarFactor:.64,sectorRole:Object.freeze({key:'fusion',short:'센서통합',name:'센서 통합실',priority:52})}),
     fcs:Object.freeze({id:'fcs',toolGroup:'advanced',capabilities:Object.freeze(['powerConsumer','fireControl','thermalDevice']),profileFor:()=>SINGLETON_MODULE_PROFILES.fcs,selectedProfile:()=>SINGLETON_MODULE_PROFILES.fcs,resistance:8,thermalProfileKey:'fcs',thermalReactionKey:'sensor',burningHeatMW:220,radarExposureClass:'internal',radarFactor:.7,sectorRole:Object.freeze({key:'fcs',short:'사격통제',name:'사격통제실',priority:50})}),
     gun:Object.freeze({id:'gun',toolGroup:'basic',requiredForLaunchLabel:'포탑',capabilities:Object.freeze(['powerConsumer','weaponPlatform','rotating','surfaceMounted','externalRadarReturn','thermalDevice']),profileFor:m=>gunProfileForModule(m),selectedProfile:()=>selectedGunProfile(),resistance:15,thermalProfileKey:(m,p)=>p?.thermalProfileKey||'chemicalGun',thermalReactionKey:(m,p)=>p?.thermalReactionKey||'chemicalGun',burningHeatMW:220,radarExposureClass:'elevated',radarFactor:1.35,sectorRole:Object.freeze({key:'gun',short:'무장',name:'무장실',priority:70}),preferredRangeM:(m,p)=>p?.preferredRangeM??null,rangeBlendWeight:(m,p)=>p?.rangeBlendWeight??1}),
@@ -843,6 +848,7 @@
     ir:Object.freeze({id:'ir',toolOrder:10,icon:'IR',toolLabel:'IR 센서',description:'0.5×1.0m · 열원 방위 탐지 · 부채꼴 열신호 표시',logLabel:'IR 센서',visual:Object.freeze({color:'#d98742',edge:'#ffd4aa'}),powerPanel:Object.freeze({order:20,label:'IR 센서'}),catalog:Object.freeze({label:'IR 센서 모듈',title:'IR 센서',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 IR 센서 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.ir],selectedId:()=>SINGLETON_MODULE_PROFILES.ir.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨.`}),infoRows:m=>sensorModuleInfoRows(m,'ir')}),
     eo:Object.freeze({id:'eo',toolOrder:20,icon:'EO',toolLabel:'EO/LRF 센서',description:'0.5×0.5m · 광역 광학 탐색 · 협시야 추적 · 레이저 거리측정',logLabel:'EO/LRF 센서',visual:Object.freeze({color:'#4c92c9',edge:'#b8e7ff'}),powerPanel:Object.freeze({order:30,label:'EO/LRF'}),catalog:Object.freeze({label:'EO/LRF 센서 모듈',title:'EO/LRF 센서',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 EO/LRF 센서 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.eo],selectedId:()=>SINGLETON_MODULE_PROFILES.eo.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨.`}),infoRows:m=>sensorModuleInfoRows(m,'eo')}),
     esm:Object.freeze({id:'esm',toolOrder:25,icon:'ES',toolLabel:'ESM 수신기',description:'1×1m · 수동 EM 수신 · 방위 및 방출원 대역 분류',logLabel:'ESM 수신기',visual:Object.freeze({color:'#8b6fd1',edge:'#dccaff'}),powerPanel:Object.freeze({order:32,label:'ESM'}),catalog:Object.freeze({label:'ESM 수신 모듈',title:'ESM 수신기',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 ESM 수신기 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.esm],selectedId:()=>SINGLETON_MODULE_PROFILES.esm.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨. 함 내부에 배치해도 성능이 떨어지지 않는다.`}),infoRows:m=>sensorModuleInfoRows(m,'esm')}),
+    radar:Object.freeze({id:'radar',toolOrder:24,icon:'RD',toolLabel:'레이더',description:'2.5×2.5m · 능동 탐색·추적 · 정밀 거리 · 켜면 상대 ESM에 노출',logLabel:'회전형 PESA 레이더',visual:Object.freeze({color:'#2fa89e',edge:'#9df0e6'}),powerPanel:Object.freeze({order:34,label:'레이더'}),catalog:Object.freeze({label:'레이더 모듈',title:'레이더',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 레이더 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.radar],selectedId:()=>SINGLETON_MODULE_PROFILES.radar.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨. 회전 어레이라 외피 위로 트인 자리에 배치해야 한다.`}),infoRows:m=>sensorModuleInfoRows(m,'radar')}),
     fusion:Object.freeze({id:'fusion',toolOrder:25,icon:'SF',toolLabel:'센서 통합',description:'1×1m · 개별 센서 관측 통합 · 표적 트랙 생성·유지',logLabel:'센서 통합 모듈',visual:Object.freeze({color:'#3f7fb8',edge:'#b8dcff'}),powerPanel:Object.freeze({order:35,label:'센서 통합'}),catalog:Object.freeze({label:'센서 통합 모듈',title:'센서 통합',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 통합 노드 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.fusion],selectedId:()=>SINGLETON_MODULE_PROFILES.fusion.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨.`}),infoRows:m=>sensorFusionModuleInfoRows(m)}),
     fcs:Object.freeze({id:'fcs',toolOrder:30,icon:'C',toolLabel:'사격통제 컴퓨터',description:'0.5×1.0m · 통합 트랙 기반 사격해 계산 · 최대 4기 포탑 통제',logLabel:'사격통제 컴퓨터',visual:Object.freeze({color:'#45a886',edge:'#a9f4d6'}),powerPanel:Object.freeze({order:40,label:'사격통제'}),catalog:Object.freeze({label:'사통 모듈',title:'사격통제',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 사통 노드 사용',sizeFilter:true,profiles:()=>[SINGLETON_MODULE_PROFILES.fcs],selectedId:()=>SINGLETON_MODULE_PROFILES.fcs.id,select:()=>{},meta:p=>`${p.subtitle} · ${p.footprint}`,compatibilityText:p=>`현재는 ${p.name} 한 종류만 제공됨.`}),infoRows:m=>fcsModuleInfoRows(m)}),
     heatsink:Object.freeze({id:'heatsink',toolOrder:40,icon:'T',toolLabel:'열관리',description:'열축적기 · 방열판 · 열방출기 등 열 관리 모듈 배치',logLabel:'열관리 모듈',visual:Object.freeze({color:'#3f7f9a',edge:'#a9e2f4'}),powerPanel:Object.freeze({order:80,label:'열관리'}),catalog:Object.freeze({label:'열관리 모듈',title:'열관리',buttonLabel:'모듈 목록',currentLabel:'현재 선택',useLabel:'이 열관리 모듈 사용',sizeFilter:true,profiles:()=>HEATSINK_PROFILE_ORDER.map(id=>HEATSINK_PROFILES[id]),selectedId:()=>selectedHeatsinkProfileId,select:id=>{if(HEATSINK_PROFILES[id])selectedHeatsinkProfileId=id;},meta:p=>`${p.familyLabel} · ${p.sizeClass} · ${p.footprint} · ${p.mass}t`,compatibilityText:()=>`선택한 열관리 모듈이 새로 배치되는 열관리 슬롯에 적용됨.`}),infoRows:m=>thermalManagementInfoRows(m)})
@@ -1359,19 +1365,23 @@
     // LRF가 잠기기 전 EO는 각크기와 가정 함폭으로 매우 거친 거리 범위만 만든다. 정밀 좌표로 취급하지 않는다.
     eoCueAssumedSpanM:35,eoCueMinRangeM:8000,eoCueMaxRangeM:300000,eoCueRangeUncertaintyFrac:.72,eoCueRangeUncertaintyMinM:8000,rangeMemoryS:6,
     eoShieldVisualMrad:1.35,eoShieldFullMrad:2.35,
-    // IR은 강한 열원을 멀리서 잡을 수 있지만 기본 함선의 평상 탐지 규모는 기존보다 줄인다.
+    // RADAR-S1 스케일 재보정: 능동 레이더가 150~200km에서 잡기 시작하므로, 기존 수동
+    // 계열이 상대적으로 무의미해지지 않도록 함께 올린다. EO/LRF만 18km에 그대로 둔다 —
+    // "탐지는 길고 사격은 짧다"가 이 판의 골격이 된다.
+    // IR은 강한 열원을 멀리서 잡는다. 우주는 배경이 차가워 원래 IR에 유리하다.
     // 단독 IR 관측은 거리값을 만들지 않고 방위 큐로만 남는다.
-    irRangeScaleM:16000,irCueNominalRangeM:18000,irCueRangeUncertaintyM:15000,trackLostS:9,
-    // EM 수신. IR보다 먼 거리에서 존재를 잡되(반응로는 시끄럽다) 방위는 나쁘고 거리는 아예 주지 않는다.
-    emRangeScaleM:12000,emSignalFloorMW:4,emSaturationMW:180,emDetectFloor:.04,
+    irRangeScaleM:50000,irCueNominalRangeM:60000,irCueRangeUncertaintyM:48000,trackLostS:9,
+    // EM 수신. 편도 전파이므로 왕복인 레이더보다 반드시 멀리 봐야 한다 — 켜는 쪽이
+    // 먼저 들키는 EMCON 긴장이 여기서 나온다.
+    emRangeScaleM:40000,emSignalFloorMW:4,emSaturationMW:180,emDetectFloor:.04,
     emClassifyMinQuality:.28,emBandMinShareMW:3,emOnlyOffsetFloorM:600,emOnlyOffsetPerRangeM:.22,
     // 단일 ESM 수신은 거리를 만들지 않는다. 내부 위치점이 필요한 기존 렌더/캐시에는 실제 거리와 무관한 명목 거리만 사용한다.
-    emCueNominalRangeM:12000,emCueRangeUncertaintyM:10000});
+    emCueNominalRangeM:40000,emCueRangeUncertaintyM:32000});
   const TACTICAL_SENSOR_CONFIG=Object.freeze({
     enterWorldWidthM:18000,exitWorldWidthM:14500,
     minZoomMul:.05,minCameraZoom:.0035,
-    esmAreaMaxRadiusM:22000,
-    esmAreaSignalLostGrowthMps:145,esmAreaMemoryS:18,
+    esmAreaMaxRadiusM:75000,
+    esmAreaSignalLostGrowthMps:480,esmAreaMemoryS:18,
     tacticalSymbolMinPx:8,tacticalSymbolMaxPx:15,
     // ── ESM 위치추정 (ESM-GEO) ────────────────────────────────
     // 증거를 세 갈래로 나누고 마지막에 정보행렬로 한 번만 합친다. 어느 갈래도 표적의
@@ -1389,7 +1399,7 @@
     pairSigmaFloorRad:.00012, // 방출원이 함 전체에 분포하고 다중경로가 있으므로 무한정 좁아지지 않는다
     pairSigmaNoiseGain:2.4,   // 약한 신호일수록 위상 측정이 불안정해진다
     minBaselineM:2.5,         // 이보다 짧은 유효 기선은 없는 것으로 취급
-    minAxisM:420,             // 불확실성 영역이 점처럼 수렴하지 않도록 하는 하한
+    minAxisM:1200,            // 불확실성 영역이 점처럼 수렴하지 않도록 하는 하한
     wedgeRatio:6,             // 신호 소실 후 타원이 이보다 길어지면 거리 추정을 버린다
     areaSigmaMul:1.66,        // 표시 타원은 1.66σ — 2D 정규분포 기준 약 75% 포함. 실제 방출원이 밖에 있을 수 있다.
     rangedMaxAxisFrac:.95,    // 장축이 쐐기 한계에 육박하면 거리를 공표하지 않는다
@@ -1412,6 +1422,63 @@
     tmaMinRangeM:150,
     tmaResolveIntervalS:.24    // 이력이 그대로면 이 간격으로만 최소제곱을 다시 푼다
   });
+  // ══ RADAR-S1: 능동 레이더 ═══════════════════════════════════════════════════
+  // 이 게임의 다른 센서는 전부 수동이다. 레이더만 스스로 전파를 쏘므로 "보는 대신
+  // 보인다"는 거래가 성립한다. 방출은 EM 대역으로 나가 상대 ESM에 그대로 잡힌다.
+  //
+  // 표적 반사 단면적(RCS)은 새로 만들지 않는다. 이미 함체 형상·장갑 재질·모듈 노출로
+  // 방향별 RCS를 산출하는 signature 계열이 있고(radarCrossSectionM2), 지금까지
+  // 소비자가 없었을 뿐이다. 레이더는 그 절반에 나머지 절반을 붙이는 일이다.
+  const RADAR_CONFIG=Object.freeze({
+    // 레이더 방정식의 기준점. snr = (rcs/refRcs)·(refRange/R)⁴·boost 이고 Pd=snr/(snr+1)
+    // 이므로 Pd=0.5가 되는 거리는 refRange·(rcs/refRcs·boost)^(1/4)다.
+    // 기본 함선 RCS 실측이 50~830m²(자세에 따라 16배)이므로 기준을 100m²/60km로 잡으면
+    // 탐색 모드(boost 85)에서 150~310km가 나온다 — 자세가 탐지거리를 두 배 흔든다.
+    refRcsM2:100,refRangeM:60000,
+    minRangeM:1,                 // R→0에서 SNR이 발산하지 않도록
+    // 도플러: 우주에는 지면 클러터가 없으므로 접선 기동이 탐지를 막지는 못한다.
+    // 다만 시선방향 속도가 0이면 도플러 정보 자체가 없어 속도해와 트랙 품질이 무너진다.
+    dopplerFullRateMps:120,      // 이 이상의 시선방향 속도면 도플러 정보가 충분하다
+    dopplerQualityFloor:.28,     // 완전 접선이어도 트랙 품질이 이 아래로는 안 떨어진다
+    dopplerRateSigmaMps:6,       // 도플러가 살아 있을 때의 거리변화율 측정 오차
+    // 트랙 수명
+    trackTtlS:16,                // 갱신 없이 이만큼 지나면 트랙을 버린다(원본 TRACK_HARD_TTL)
+    confirmHits:2,               // 이만큼 연속 탐지되면 SEARCH → TWS로 승격
+    // 회전식은 재방문 주기만큼 필연적으로 빔이 비운다. 감쇠가 그 공백보다 빠르면
+    // 접촉이 영원히 확립되지 않으므로, 감쇠는 재방문이 아니라 TTL 시간축에 맞춘다.
+    qualityRisePerS:1.35,qualityDecayPerS:.12,detectDecayPerS:.08,
+    // 측정 잡음. 거리는 좋고 방위는 빔폭에 묶인다 — 레이더의 성격 그 자체다.
+    beamBearingSigmaFrac:.16,    // 방위 σ = 빔폭 × 이 비율
+    minBearingSigmaRad:.0009,
+    nctrRangeFracForClass:.55,   // 최대탐지거리의 이 안쪽이어야 분류가 시작된다
+    nctrDwellS:2.6,nctrQualityGate:.45,
+    // 탐지만으로는 사격해에 넘기지 않는다. 확립된 트랙(TWS/STT)이고 품질이 이 문턱을
+    // 넘어야 rangeKnown을 준다 — 탐지 → 확립 → 사격해라는 단계가 여기서 갈린다.
+    fixTrackQuality:.32
+  });
+  // 레이더 프로파일. 원본 시뮬레이터의 RADAR_REGISTRY 구조(performance/scan/detection/
+  // datalink)를 그대로 따르되, 전방 지향 항공 레이더가 아니라 함선용으로 재해석했다.
+  //
+  // 2면 회전식 PESA: 배면 두 면이 공통 축으로 돌고, 각 면은 자기 정면 기준 ±60°를
+  // 전자식으로 조향한다. 순간 커버리지는 2×120°=240°이고 나머지 60° 사각 두 개를
+  // 회전이 쓸고 지나간다. 재방문 주기는 회전주기의 절반이다(면이 둘이므로).
+  // 송신원이 하나뿐이라 AESA처럼 여러 빔을 동시에 세우지는 못한다.
+  const RADAR_PROFILES=Object.freeze({
+    'radar-s5-rotating-pesa':Object.freeze({
+      id:'radar-s5-rotating-pesa',type:'PESA',label:'회전형 PESA',
+      name:'2면 회전식 PESA 어레이',
+      performance:Object.freeze({faces:2,rotationPeriodS:4.0,faceFieldOfRegardDeg:60,trackCapacity:24}),
+      scan:Object.freeze({beamWidthDeg:2.6,dwellS:.045,concurrentBeams:1,searchRevisitPenalty:1}),
+      // 모드별 처리 이득. 탐색은 넓게 훑고, 추적은 한 방위에 오래 머물러 더 깊이 본다.
+      detection:Object.freeze({searchBoost:85,trackBoost:150,sttBoost:260,
+        searchRangeNoiseM:180,trackRangeNoiseM:70,sttRangeNoiseM:26}),
+      // 미사일이 붙을 자리. 이번 버전에서는 선언만 하고 소비하지 않는다.
+      datalink:Object.freeze({maxArh:8,maxSarh:2,
+        note:'ARH 동시 유도 8발, SARH 조명 2발. 단일 송신원 시간분할이라 AESA식 재방문은 못 한다.'}),
+      nctr:Object.freeze({enabled:true,quality:.58,maxRangeFrac:.55})
+    })
+  });
+  function radarProfile(id){return RADAR_PROFILES[id]||RADAR_PROFILES['radar-s5-rotating-pesa'];}
   // SENSOR-FCS B1: 관측 시각과 현재 시각을 분리하고, 통합 트랙의 불확실성을 사격해와 실제 탄착 분산에 전파한다.
   const SENSOR_FCS_PRECISION_CONFIG=Object.freeze({latencyMinS:.045,latencyMaxS:.28,legacyLatencyS:.18,solutionAgeFloorS:.28,solutionAgePeriods:3.2,minTargetRadiusM:1.5,maxTrackingDispersionMrad:18});
   function sensorObservationLatencyS(obs,precision=true){const eo=Math.max(obs?.eoDetectQuality||0,obs?.eoQuality||0),ir=Math.max(obs?.irDetectQuality||0,obs?.irQuality||0),quality=clamp01(Math.max(eo,ir*.88)),base=(obs?.eoLrfQuality||0)>.24?.045:eo>.08?.075:ir>.05?.115:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS;return Math.max(SENSOR_FCS_PRECISION_CONFIG.latencyMinS,Math.min(SENSOR_FCS_PRECISION_CONFIG.latencyMaxS,base+(1-quality)*.105+(precision?0:.035)));}
@@ -1541,6 +1608,76 @@
   function projectedVisualSpanM(observer,target){const toObserver=Math.atan2(observer.y-target.y,observer.x-target.x),aspect=normalizeAngle(toObserver-target.angle),csM2=directionalSignatureAt(target,aspect,'cs').csM2;return Math.max(.25,csM2/HULL_HEIGHT_M);}
   function visualCrossSectionM2(observer,target){const toObserver=Math.atan2(observer.y-target.y,observer.x-target.x),aspect=normalizeAngle(toObserver-target.angle);return directionalSignatureAt(target,aspect,'cs').csM2;}
   function radarCrossSectionM2(observer,target){const toObserver=Math.atan2(observer.y-target.y,observer.x-target.x),aspect=normalizeAngle(toObserver-target.angle);return directionalSignatureAt(target,aspect,'rcs').rcsM2;}
+  // ══ EW-S0: 전자전 이음매 (동작 없음) ═══════════════════════════════════════
+  // 재밍은 이번에 구현하지 않는다. 다만 나중에 넣을 때 레이더 방정식·관측·트랙을
+  // 다시 뜯지 않도록 자리와 계약만 미리 만들어 둔다.
+  //
+  // 지금은 재머 모듈이 존재하지 않아 shipEwEmission이 항상 EW_NONE을 돌려주고,
+  // 따라서 radarJamRejection은 항상 정확히 0이며 레이더 계산은 재밍 개념이 없던
+  // 때와 **비트 단위로 동일**하다(테스트가 이를 고정한다).
+  //
+  // 구현할 때 손댈 곳은 세 군데뿐이다:
+  //   1) 재머 모듈 타입을 등록하고 shipEwEmission이 그 방출을 돌려주게 한다
+  //   2) radarJamRejection에 실제 감쇠식을 넣는다
+  //   3) EW_CONFIG.enabled를 켠다
+  // 물리적 뼈대는 정해져 있다 — 재밍 전력은 편도(R²)로, 표적 반사는 왕복(R⁴)으로
+  // 줄어들므로 가까워질수록 반드시 신호가 이긴다. 그 교차점이 버스루 거리이며,
+  // 이것이 재밍이 접근을 지연시킬 뿐 막지는 못하는 이유다.
+  const EW_CONFIG=Object.freeze({
+    enabled:false,            // 켜지기 전까지 아래 값은 어디에도 쓰이지 않는다
+    maxNoiseRejection:.96,    // 잡음 재밍이 깎을 수 있는 SNR의 상한
+    burnThroughExponent:2,    // 편도 대 왕복의 차수 차이(R⁴/R² = R²)
+    maxFalseTargets:0         // 기만 재밍이 만들 허위 표적 수 상한
+  });
+  const EW_NONE=Object.freeze({active:false,noise:0,deception:0,sourceId:null});
+  // 이 함선이 내보내는 전자전 방출. 재머 모듈이 없으므로 언제나 '없음'이다.
+  function shipEwEmission(ship){return EW_NONE;}
+  // 관측자–표적 쌍에 걸린 재밍 상태.
+  function radarJammingState(observer,target){const ew=shipEwEmission(target);return ew&&ew.active?ew:EW_NONE;}
+  // 재밍이 SNR에서 깎아내는 비율 0~1. 구현 전까지는 항상 0(항등)이다.
+  // 실제 식은 여기에 들어간다 — 검증하지 않은 식을 미리 넣어 두면 켜는 순간
+  // 조용히 틀리므로, 자리만 두고 비워 놓는다.
+  function radarJamRejection(jam,rangeM,rcsM2,boost){
+    if(!EW_CONFIG.enabled||!jam||!jam.active)return 0;
+    return 0;
+  }
+  // 재밍이 있어도 이 거리 안쪽이면 신호가 이긴다. 재밍이 없으면 null이다.
+  function radarBurnThroughRangeM(jam){
+    if(!EW_CONFIG.enabled||!jam||!jam.active)return null;
+    return null;
+  }
+  // ── 레이더 방정식 ─────────────────────────────────────────────────────────
+  // 왕복 전파라 수신 전력이 R⁴에 반비례한다. 이 한 줄이 레이더가 수동 센서와 다른
+  // 이유 전부다 — 거리를 두 배 벌리면 필요한 처리 이득이 16배가 된다.
+  // 순수 함수로 둔다: 함선 객체를 몰라야 나중에 미사일 시커가 그대로 재사용한다.
+  function radarSnrLinear(rcsM2,rangeM,boost=1){
+    const c=RADAR_CONFIG,r=Math.max(c.minRangeM,Number(rangeM)||0),rcs=Math.max(0,Number(rcsM2)||0);
+    return (rcs/c.refRcsM2)*Math.pow(c.refRangeM/r,4)*Math.max(0,Number(boost)||0);
+  }
+  // Pd = SNR/(SNR+1). 원본 시뮬레이터와 같은 형태이며, 임계값이 아니라 완만한 곡선이라
+  // 탐지가 거리에 따라 부드럽게 무너진다. jam 인자는 EW-S0 이음매이며 오늘은 항등이다.
+  function radarDetectionPd(rcsM2,rangeM,boost=1,jam=null){
+    const rejection=radarJamRejection(jam,rangeM,rcsM2,boost);
+    const snr=radarSnrLinear(rcsM2,rangeM,boost)*(rejection>0?1-rejection:1);
+    return Number.isFinite(snr)&&snr>0?clamp01(snr/(snr+1)):0;
+  }
+  // Pd=0.5가 되는 거리. 표시와 테스트용 역산이다.
+  function radarDetectionRangeM(rcsM2,boost=1){
+    const c=RADAR_CONFIG,rcs=Math.max(1e-6,Number(rcsM2)||0),b=Math.max(1e-6,Number(boost)||0);
+    return c.refRangeM*Math.pow(rcs/c.refRcsM2*b,.25);
+  }
+  // 도플러: 시선방향 속도 성분. 우주에는 클러터가 없으므로 이 값이 0이어도 탐지는
+  // 그대로 되지만, 도플러 정보가 없어 속도해와 트랙 품질이 무너진다.
+  function radarRangeRateMps(observer,target){
+    const dx=target.x-observer.x,dy=target.y-observer.y,r=Math.hypot(dx,dy);
+    if(!(r>1e-6))return 0;
+    return ((Number(target.vx)||0)-(Number(observer.vx)||0))*(dx/r)+((Number(target.vy)||0)-(Number(observer.vy)||0))*(dy/r);
+  }
+  // 도플러 가용도 0~1. 접선 기동이면 0에 가까워진다.
+  function radarDopplerQuality(rangeRateMps){
+    const c=RADAR_CONFIG;
+    return clamp01(c.dopplerQualityFloor+(1-c.dopplerQualityFloor)*clamp01(Math.abs(Number(rangeRateMps)||0)/c.dopplerFullRateMps));
+  }
   const DEFAULT_THERMAL_MODULE_PROFILE=Object.freeze({idleHeatMW:.2,wasteHeatRatio:.12,casingTransmission:.97,occlusionPerM:.18,burstDecayS:6});
   function thermalProfileForModule(m){return THERMAL_MODULE_PROFILES[moduleThermalProfileKey(m)]||DEFAULT_THERMAL_MODULE_PROFILE;}
   function thermalMaterialAttenuation(material){return MATERIALS[material]?.irAttenuationPerMm??.0024;}
@@ -1953,9 +2090,12 @@
     capacitor:Object.freeze({id:'capacitor',label:'캐패시터',short:'CAP',color:'#ffd166',transientTauS:1.1}),
     fcs:Object.freeze({id:'fcs',label:'사격통제',short:'FCS',color:'#7ee3ff',transientTauS:1.6}),
     shield:Object.freeze({id:'shield',label:'보호막',short:'SHD',color:'#b78bff',transientTauS:2.4}),
-    weapon:Object.freeze({id:'weapon',label:'에너지 무장',short:'WPN',color:'#ff5c7a',transientTauS:.85})
+    weapon:Object.freeze({id:'weapon',label:'에너지 무장',short:'WPN',color:'#ff5c7a',transientTauS:.85}),
+    // 능동 레이더. 다른 대역이 새어나가는 신호인 것과 달리 이쪽은 의도적으로 쏘는
+    // 것이라 압도적으로 크다. 켜는 순간 상대 ESM에 가장 먼저, 가장 뚜렷하게 잡힌다.
+    radar:Object.freeze({id:'radar',label:'레이더',short:'RDR',color:'#5ce1d6',transientTauS:1.4})
   });
-  const EM_BAND_ORDER=Object.freeze(['reactor','capacitor','shield','fcs','weapon']);
+  const EM_BAND_ORDER=Object.freeze(['reactor','capacitor','shield','fcs','weapon','radar']);
   const EM_CONFIG=Object.freeze({
     // 지속 방출 계수 — 각 방출원의 물리량을 MW 등가 신호로 환산한다.
     reactorMWPerGenMW:.055,        // 2.4GW 만출력 반응로 ≈ 132 신호MW
@@ -1964,6 +2104,9 @@
     shieldMWPerUnitFull:26,        // 레이어 1기 만충 기준
     // 순간 방출 — 이벤트 MJ를 신호MW 피크로 환산한다. 짧지만 지속보다 훨씬 크게 튄다.
     weaponMWPerShotMJ:.62, shieldImpactMWPerMJ:.38, fcsLockMW:120, capacitorRechargeMWPerMJ:.22,
+    // 레이더 방출. 소비 전력에 비례하되 모드에 따라 크게 달라진다 — 탐색은 넓게 얇게,
+    // 단일표적추적(STT)은 한 방위에 집중해 쏘므로 훨씬 시끄럽다.
+    radarMWPerConsumedMW:1.35, radarSearchMul:1, radarTwsMul:1.45, radarSttMul:2.4,
     transientMaxEntries:24, transientCutoff:.5,
     // 투과 — 장갑이 아무리 두꺼워도 이 아래로는 절대 떨어지지 않는다.
     // 평균 장갑 두께(강철 등가 mm) 기준: 50mm→.99, 200mm→.96, 500mm 이상→.90 바닥.
@@ -1981,6 +2124,9 @@
     shield:Object.freeze({minMW:9,maxMW:78}),
     fcs:Object.freeze({minMW:4,maxMW:34}),
     weapon:Object.freeze({minMW:10,maxMW:150}),
+    // 능동 레이더. 운용 모드(탐색/추적/단일표적추적)에 따라 실제 방출이 크게 달라지므로
+    // 범위가 넓다. 대신 레이더 대역이 잡혔다는 사실 자체가 강한 정보다 — 상대가 켰다는 뜻이다.
+    radar:Object.freeze({minMW:90,maxMW:1400}),
     // 대역을 하나도 짚지 못했을 때. 후보가 손전등부터 주력함까지이므로 극단적으로
     // 넓고, 그 결과 거리는 사실상 만들어지지 않는다(쐐기로 남는다).
     unknown:Object.freeze({minMW:1,maxMW:9000})
@@ -2052,8 +2198,21 @@
     ship.emTransients=keep;
     return out;
   }
+  // 이 함선의 레이더가 지금 어느 모드로 쏘고 있는가. 방출 계산은 매 틱 × 관측자 ×
+  // 표적마다 불리므로 틱 단위로 캐시한다.
+  function radarEmissionMode(ship){
+    const st=radarSystemState(ship),now=battle?.time||0;
+    if(st.modeAtS===now&&st.modeCache)return st.modeCache;
+    let mode='SEARCH';
+    for(const tr of Object.values(ship?.sensorTracks||{})){
+      if(tr?.radarIlluminated){mode='STT';break;}
+      if(tr?.radarTrackClass==='TWS')mode='TWS';
+    }
+    st.modeAtS=now;st.modeCache=mode;
+    return mode;
+  }
   function emContinuousMWByBand(ship){
-    const out={reactor:0,capacitor:0,fcs:0,shield:0,weapon:0};
+    const out={reactor:0,capacitor:0,fcs:0,shield:0,weapon:0,radar:0};
     if(ship?.alive===false)return out;
     const sys=ship?.powerSystem;
     if(sys){
@@ -2082,6 +2241,16 @@
         if(pools>0)shieldMW+=units*EM_CONFIG.shieldMWPerUnitFull*(filled/pools);
       }
       out.shield=shieldMW;
+    }
+    // 레이더는 스스로 쏘는 유일한 장비다. 다른 대역이 "새어나가는" 신호인 반면 이쪽은
+    // 의도적인 방사라 압도적으로 크고, 끄면(EMCON) 즉시 완전히 침묵한다.
+    const radarFactor=ship?.design?radarOperationalFactor(ship):0;
+    if(radarFactor>0){
+      const profile=selectedModulePowerProfile('radar'),units=Math.max(0,modulePower(ship,'radar'));
+      const consumedMW=Math.max(0,Number(profile?.maxMW)||0)*units*radarFactor;
+      const mode=radarEmissionMode(ship);
+      const mul=mode==='STT'?EM_CONFIG.radarSttMul:mode==='TWS'?EM_CONFIG.radarTwsMul:EM_CONFIG.radarSearchMul;
+      out.radar=consumedMW*EM_CONFIG.radarMWPerConsumedMW*mul;
     }
     return out;
   }
@@ -2186,7 +2355,7 @@
   function createSensorTrack(observer,target){const obs=sensorObservation(observer,target),noiseAngle=Math.random()*Math.PI*2,initialOffset=Math.min(70,Math.max(6,obs.distanceM*.008)),estimatedX=target.x+Math.cos(noiseAngle)*initialOffset,estimatedY=target.y+Math.sin(noiseAngle)*initialOffset,now=battle?.time||0;return {targetId:target.id,detectionQuality:0,eoQuality:0,irQuality:0,emQuality:0,emClassifyQuality:0,emBearingHalfRad:0,eoBearingHalfRad:0,emReceivedMW:0,emBands:[],emOnly:false,irOnly:false,eoBearingOnly:false,passiveBearingOnly:false,emBearingOnly:false,emMemoryS:0,rangeKnown:false,rangeMinM:null,rangeMaxM:null,lastNonEmFixAtS:null,bearingQuality:0,rangeQuality:0,velocityQuality:0,accelerationQuality:0,shapeQuality:0,lockQuality:0,source:'SEARCH',bearingEstimate:Math.atan2(estimatedY-observer.y,estimatedX-observer.x),rangeEstimateM:Math.max(1,Math.hypot(estimatedX-observer.x,estimatedY-observer.y)),estimatedX,estimatedY,estimatedVx:0,estimatedVy:0,estimatedAx:0,estimatedAy:0,rangeUncertaintyM:initialOffset,positionUncertaintyM:initialOffset,velocityUncertaintyMps:6,accelerationUncertaintyMps2:8,bearingUncertaintyRad:Math.max(.0004,initialOffset/Math.max(1,obs.distanceM)),lastMeasurementAtS:now-SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,measurementLatencyS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,trackAgeS:SENSOR_FCS_PRECISION_CONFIG.legacyLatencyS,lastSeenS:99,sampleTimer:0,csM2:obs.csM2,irSignature:obs.irSignature,actualDistanceM:null,irSensorCount:0,eoSensorCount:0,eoLrfQuality:0,eoLrfStableS:0,eoLrfLocked:false,eoAngularMrad:obs.angularMrad||0,eoIdentificationQuality:0,eoIdentificationStage:0,eoLastSeenS:99,eoStageRiseS:0,eoStageDecayS:0,shieldId:createShieldIdentification(),esmAreaCenterX:null,esmAreaCenterY:null,esmAreaMajorM:0,esmAreaMinorM:0,esmAreaAngleRad:0,esmAreaRanged:false,esmBaselineM:0,esmBaselineSeparationM:0,esmReceiverCount:0,esmBearingSigmaRad:0,esmMeasuredBearingRad:null,esmRangeEstimateM:null,esmRangeSigmaM:null,esmMotionBaselineM:0,esmMotionSpanS:0,esmRangeRelSigma:Infinity,esmObservations:[],esmSignalRangeM:null,esmSignalSigmaM:null,esmPowerPriorMinMW:null,esmPowerPriorMaxMW:null,esmTmaQuality:0,esmTmaCount:0,esmTmaMajorSigmaM:null,esmTmaMinorSigmaM:null,esmTmaMajorAxisRad:null,
     // ESM 고유의 측정 성향. 트랙마다 고정되어 프레임마다 추정이 흔들리지 않게 하며,
     // 이것 때문에 실제 방출원이 추정 영역 밖에 놓이는 일이 자연스럽게 생긴다.
-    _esmRangeQuantile:Math.random(),_esmBearingBiasFrac:Math.random()*2-1,_esmBearingJitter:0,_esmHistoryVersion:0,_esmTmaInfo:null,_esmTmaVersion:-1,_esmTmaSolvedAtS:null,esmAreaConfidence:0,esmAreaAgeS:99,esmAreaLastUpdateS:null,_positionNoiseAngle:noiseAngle,_positionNoiseScale:.72+Math.random()*.28,_velocityBiasX:(Math.random()*2-1),_velocityBiasY:(Math.random()*2-1)};}
+    _esmRangeQuantile:Math.random(),_esmBearingBiasFrac:Math.random()*2-1,_esmBearingJitter:0,_esmHistoryVersion:0,_esmTmaInfo:null,_esmTmaVersion:-1,_esmTmaSolvedAtS:null,esmAreaConfidence:0,esmAreaAgeS:99,esmAreaLastUpdateS:null,radarDetected:false,radarLastSeenS:99,radarCoastS:99,radarDetectQuality:0,radarTrackQuality:0,radarTrackClass:'NONE',radarRangeM:null,radarRangeSigmaM:null,radarBearingRad:null,radarBearingSigmaRad:0,radarRangeRateMps:null,radarDopplerQuality:0,radarNctrStage:0,radarHits:0,radarIlluminated:false,radarJammed:false,radarJamStrength:0,radarBurnThroughM:null,_radarRangeBias:Math.random()*2-1,_radarBearingBias:Math.random()*2-1,_radarRateBias:Math.random()*2-1,_positionNoiseAngle:noiseAngle,_positionNoiseScale:.72+Math.random()*.28,_velocityBiasX:(Math.random()*2-1),_velocityBiasY:(Math.random()*2-1)};}
   function sensorTrackFor(observer,targetId){return observer?.sensorTracks?.[targetId]||null;}
   // 세 축을 각자의 속도로 올리고 각자의 속도로 낡힌다. 추정 내용은 그 축의 신뢰도가
   // 게이트를 넘었을 때만 읽어들인다 — 신뢰도가 낮으면 아예 모르는 상태로 둔다.
@@ -2541,6 +2710,163 @@
     if(!tr.esmAreaRanged||!Number.isFinite(tr.esmRangeEstimateM))return `방위 ${esmBearingPrecisionLabel(tr.esmBearingSigmaRad||tr.emBearingHalfRad||.35)} · 거리 미상`;
     return `방위 ${esmBearingPrecisionLabel(tr.esmBearingSigmaRad)} · 거리 ${(tr.esmRangeEstimateM/1000).toFixed(1)}±${((tr.esmRangeSigmaM||0)/1000).toFixed(1)}km · ${esmRangeSourceLabel(tr)}`;
   }
+
+  // ══ RADAR-S1 런타임: 2면 회전식 스캔과 트랙 ══════════════════════════════
+  // 함선마다 회전 위상을 하나 들고 다닌다. 위상이 무작위로 시작하므로 두 함선의
+  // 스캔이 우연히 동기화되지 않는다.
+  function radarSystemState(ship){
+    return ship.radarSystem||(ship.radarSystem={rotationPhase:Math.random(),rotationRad:0});
+  }
+  // EMCON 스위치. 보호막의 shieldOnline과 같은 자리에 둔다 — 끄면 완전히 침묵한다.
+  function radarEmitting(ship){return ship?.systems?.radarEmitting!==false;}
+  function radarOperationalFactor(ship){
+    const installed=(ship?.design?.modules||[]).some(m=>m.type==='radar'),units=Math.max(0,modulePower(ship,'radar')),
+      power=clamp01(ship?.powerSystem?.sensorFactor??1),hardware=installed?.2+.8*Math.min(1,units):0;
+    return radarEmitting(ship)?clamp01(hardware*(.35+.65*power)):0;
+  }
+  // 회전하는 각 면의 월드 기준 정면 방위. 면이 n개면 2π/n 간격으로 배치된다.
+  function radarFaceBearings(profile,nowS,phase=0,hullAngle=0){
+    const perf=profile.performance,n=Math.max(1,perf.faces|0),period=Math.max(.05,perf.rotationPeriodS);
+    const rot=(nowS/period+phase)*Math.PI*2,out=[];
+    for(let i=0;i<n;i++)out.push(normalizeAngle(hullAngle+rot+i*Math.PI*2/n));
+    return out;
+  }
+  // 표적 방위가 어느 면의 전자 조향 범위(FOR) 안에 있는가. 면 정면에서 벗어날수록
+  // 어레이의 유효 개구가 cos만큼 줄어 이득이 떨어진다 — 가장자리 빔이 약한 이유다.
+  function radarFaceCoverage(profile,faceBearings,bearingRad){
+    const forRad=Math.max(.01,(profile.performance.faceFieldOfRegardDeg||60)*Math.PI/180);
+    let best=null;
+    for(let i=0;i<faceBearings.length;i++){
+      const off=Math.abs(normalizeAngle(bearingRad-faceBearings[i]));
+      if(off<=forRad&&(!best||off<best.offRad))best={faceIndex:i,offRad:off,forRad};
+    }
+    if(!best)return null;
+    return {...best,gain:Math.max(.15,Math.cos(best.offRad))};
+  }
+  // 순간 커버리지 비율. 면 n개 × FOR 2배가 360° 중 얼마인가 — 2면 ±60°면 240/360이다.
+  function radarInstantaneousCoverageFrac(profile){
+    const perf=profile.performance,n=Math.max(1,perf.faces|0);
+    return clamp01(n*2*(perf.faceFieldOfRegardDeg||60)/360);
+  }
+  function radarRevisitPeriodS(profile){
+    const perf=profile.performance;
+    return Math.max(.05,perf.rotationPeriodS)/Math.max(1,perf.faces|0);
+  }
+  // 모드별 빔 점유율. 탐색은 FOR 전체를 훑으므로 한 표적이 받는 시간이 얇게 나뉘고,
+  // 추적은 그 표적에 빔을 세워 두므로 두껍다. 이 차이가 곧 처리 이득 차이가 된다.
+  function radarModeDuty(profile,mode){
+    const sc=profile.scan,span=2*(profile.performance.faceFieldOfRegardDeg||60);
+    const searchDuty=clamp01((sc.beamWidthDeg||2.5)/Math.max(1,span));
+    if(mode==='STT')return 1;
+    if(mode==='TWS')return clamp01(Math.max(searchDuty*6,.22));
+    return searchDuty;
+  }
+  function radarModeBoost(profile,mode){
+    const d=profile.detection;
+    return mode==='STT'?d.sttBoost:mode==='TWS'?d.trackBoost:d.searchBoost;
+  }
+  function radarModeRangeNoiseM(profile,mode){
+    const d=profile.detection;
+    return mode==='STT'?d.sttRangeNoiseM:mode==='TWS'?d.trackRangeNoiseM:d.searchRangeNoiseM;
+  }
+  // 이 함선이 이 표적에 대해 어떤 모드로 서 있는가. 락온한 표적은 STT, 이미 확립된
+  // 트랙은 TWS, 나머지는 탐색이다.
+  function radarModeForTarget(ship,tr,targetId){
+    if(ship?.lockId&&ship.lockId===targetId)return 'STT';
+    return (tr?.radarTrackQuality||0)>.35?'TWS':'SEARCH';
+  }
+  // 함선에 실제로 살아 있는 레이더의 프로파일. 여러 기를 달아도 지금은 한 종류뿐이라
+  // 첫 번째 정상 모듈의 프로파일을 쓴다.
+  function shipRadarProfile(ship){
+    const m=(ship?.design?.modules||[]).find(q=>q.type==='radar'&&q.hp>0);
+    return m?radarProfile(moduleResolvedProfile(m)?.id):null;
+  }
+  // ── 레이더 관측 ───────────────────────────────────────────────────────────
+  // 실제 표적을 읽는 곳은 여기 하나뿐이고, 읽는 즉시 측정 오차를 얹어 내보낸다.
+  // 트랙 갱신은 이 결과만 보고 표적 객체는 보지 않는다 — ESM과 같은 계약이다.
+  const RADAR_EMPTY_OBS=Object.freeze({active:false,inBeam:false,pd:0,rcsM2:0,quality:0,detectQuality:0,
+    bearingRad:0,bearingHalfRad:0,rangeM:0,rangeRateMps:0,dopplerQuality:0,mode:'SEARCH',duty:0,faceGain:0,matchedSensors:0,
+    jam:EW_NONE,jamRejection:0,burnThroughM:null});
+  function radarObservation(observer,target,mode='SEARCH',nowS=null){
+    const factor=radarOperationalFactor(observer),profile=shipRadarProfile(observer);
+    if(!(factor>0)||!profile)return RADAR_EMPTY_OBS;
+    const now=Number.isFinite(nowS)?nowS:(battle?.time||0);
+    const dx=target.x-observer.x,dy=target.y-observer.y,distanceM=Math.max(1,Math.hypot(dx,dy)),trueBearing=Math.atan2(dy,dx);
+    // 회전 위상 → 이 순간 어느 면이 어디를 보고 있는가
+    const st=radarSystemState(observer),faces=radarFaceBearings(profile,now,st.rotationPhase,observer.angle||0);
+    const cover=radarFaceCoverage(profile,faces,trueBearing);
+    if(!cover)return {...RADAR_EMPTY_OBS,mode,bearingRad:trueBearing,rangeM:distanceM};
+    // 반사 단면적은 이미 있는 방향별 signature 모델이 돌려준다. 표적 자세가 여기서 들어온다.
+    const rcsM2=Math.max(0,radarCrossSectionM2(observer,target));
+    const boost=radarModeBoost(profile,mode)*factor*cover.gain;
+    const jam=radarJammingState(observer,target);
+    const pd=radarDetectionPd(rcsM2,distanceM,boost,jam);
+    // 선체 가림·모듈 손상·전력은 기존 섹터 센서 응답이 그대로 처리한다.
+    const resp=radarSensorResponse(observer,target,trueBearing,distanceM,rcsM2,pd);
+    if(!resp.active)return {...RADAR_EMPTY_OBS,mode,bearingRad:trueBearing,rangeM:distanceM,rcsM2,pd};
+    const rangeRate=radarRangeRateMps(observer,target);
+    return {active:true,inBeam:true,pd,rcsM2,quality:resp.quality,detectQuality:resp.detectQuality,
+      bearingRad:trueBearing,bearingHalfRad:resp.bearingHalfRad,rangeM:distanceM,rangeRateMps:rangeRate,
+      dopplerQuality:radarDopplerQuality(rangeRate),mode,duty:radarModeDuty(profile,mode),
+      faceGain:cover.gain,faceIndex:cover.faceIndex,matchedSensors:resp.matchedSensors,profile,
+      jam,jamRejection:radarJamRejection(jam,distanceM,rcsM2,boost),burnThroughM:radarBurnThroughRangeM(jam)};
+  }
+  // ── 레이더 트랙 ───────────────────────────────────────────────────────────
+  // 표적 객체를 받지 않는다. 거리·방위·거리변화율은 관측에서 오고, 여기서 트랙 고유의
+  // 측정 편향을 얹어 추정값을 만든다.
+  function updateRadarTrack(tr,observer,robs,dt){
+    if(!tr||!observer)return tr;
+    const c=RADAR_CONFIG,now=battle?.time||0;
+    if(robs?.active){
+      const profile=robs.profile||shipRadarProfile(observer);
+      // 빔 점유율이 곧 초당 관측 횟수다. 탐색은 얇게, 추적은 두껍게 쌓인다.
+      const lookRate=Math.max(.05,(robs.duty||0)/Math.max(.005,profile?.scan?.dwellS||.05));
+      // dwell 한 번이 곧 탐지 기회 한 번이다. 이 틱에 주어진 기회 수만큼 누적하되,
+      // 확률을 적분하지 않고 "적어도 한 번 잡을 확률"로 쌓는다 — 강한 반사는 한 번의
+      // 빔 통과로 바로 잡히고, 약한 반사는 몇 바퀴를 돌아도 좀처럼 확립되지 않는다.
+      const looks=Math.max(0,dt*lookRate),pEff=clamp01(robs.pd*robs.detectQuality);
+      const pTick=pEff>=1?1:1-Math.pow(1-pEff,looks);
+      tr.radarDetectQuality=clamp01(1-(1-(tr.radarDetectQuality||0))*(1-pTick));
+      if((tr.radarDetectQuality||0)>.05){
+        // 측정. 트랙마다 고정된 편향 + 관측 잡음이라 프레임마다 값이 튀지 않는다.
+        const rangeNoise=radarModeRangeNoiseM(profile,robs.mode)*(Number(tr._radarRangeBias)||0);
+        const bearingSigma=Math.max(c.minBearingSigmaRad,(robs.bearingHalfRad||0)*c.beamBearingSigmaFrac);
+        tr.radarRangeM=Math.max(1,robs.rangeM+rangeNoise);
+        tr.radarRangeSigmaM=Math.max(1,radarModeRangeNoiseM(profile,robs.mode));
+        tr.radarBearingRad=normalizeAngle(robs.bearingRad+bearingSigma*(Number(tr._radarBearingBias)||0));
+        tr.radarBearingSigmaRad=bearingSigma;
+        // 도플러가 살아 있을 때만 거리변화율을 공표한다. 접선 기동이면 값 자체가 무의미하다.
+        const dq=clamp01(robs.dopplerQuality);
+        tr.radarDopplerQuality=dq;
+        tr.radarRangeRateMps=dq>c.dopplerQualityFloor+.02?robs.rangeRateMps+c.dopplerRateSigmaMps*(Number(tr._radarRateBias)||0)/Math.max(.05,dq):null;
+        // 트랙 품질은 관측 품질과 도플러 가용도의 곱이다 — 접선 기동이 여기를 무너뜨린다.
+        const want=clamp01(robs.quality*(.35+.65*dq));
+        tr.radarTrackQuality=approachValue(tr.radarTrackQuality||0,want,clamp01(dt*c.qualityRisePerS));
+        tr.radarHits=(tr.radarHits||0)+1;
+        tr.radarTrackClass=tr.radarHits>=c.confirmHits?robs.mode:'SEARCH';
+        tr.radarIlluminated=robs.mode==='STT';
+        // NCTR: 충분히 가깝고 안정된 트랙만 점진적으로 분류된다.
+        if(profile?.nctr?.enabled&&robs.rangeM<=radarDetectionRangeM(robs.rcsM2,radarModeBoost(profile,robs.mode))*profile.nctr.maxRangeFrac&&(tr.radarTrackQuality||0)>=c.nctrQualityGate)
+          tr.radarNctrStage=Math.min(2,(tr.radarNctrStage||0)+dt/Math.max(.1,c.nctrDwellS));
+      }
+      // EW-S0 이음매: 오늘은 언제나 재밍 없음이 실린다.
+      tr.radarJammed=!!(robs.jam&&robs.jam.active);tr.radarJamStrength=Number(robs.jamRejection)||0;
+      tr.radarBurnThroughM=robs.burnThroughM??null;
+      tr.radarCoastS=0;tr.radarLastSeenS=0;tr.radarDetected=(tr.radarDetectQuality||0)>.12;
+    }else{
+      // 빔이 지나갔거나 신호가 약하다. 회전식이라 잠깐 못 보는 것이 정상이므로
+      // 곧바로 버리지 않고 TTL까지 관성으로 끌고 간다.
+      tr.radarCoastS=(tr.radarCoastS||0)+dt;tr.radarLastSeenS=(tr.radarLastSeenS||0)+dt;
+      tr.radarDetectQuality=Math.max(0,(tr.radarDetectQuality||0)-dt*c.detectDecayPerS);
+      tr.radarTrackQuality=Math.max(0,(tr.radarTrackQuality||0)-dt*c.qualityDecayPerS);
+      tr.radarIlluminated=false;
+      if(tr.radarCoastS>c.trackTtlS){
+        tr.radarDetected=false;tr.radarTrackClass='NONE';tr.radarRangeM=null;tr.radarRangeSigmaM=null;
+        tr.radarRangeRateMps=null;tr.radarHits=0;tr.radarNctrStage=0;tr.radarTrackQuality=0;
+      }else tr.radarDetected=(tr.radarDetectQuality||0)>.12;
+    }
+    return tr;
+  }
   function updateSensorFusionTrack(observer,target,obs,dt,{precision=true}={}){
     if(!observer.sensorTracks)observer.sensorTracks={};
     const inputScale=sensorFusionInputScale(observer,obs),precisionScale=precision?1:.72,tr=observer.sensorTracks[target.id]||(observer.sensorTracks[target.id]=createSensorTrack(observer,target)),fusion=sensorFusionOperationalFactor(observer)*inputScale*precisionScale,irf=irOperationalFactor(observer),eoObsDetection=obs.eoDetectQuality,eoObsQuality=obs.eoQuality,irObsQuality=obs.irQuality,irObsDetect=obs.irDetectQuality,emObsQuality=obs.emQuality||0,emObsDetect=obs.emDetectQuality||0,det=Math.max(eoObsDetection*.96,irObsDetect,emObsDetect),seen=det>.025,eoSeen=eoObsDetection>.018&&obs.eoCoverageQuality>.01,now=battle?.time||0,measurementLatency=sensorObservationLatencyS(obs,precision),measurement=delayedTargetMeasurement(target,measurementLatency);tr.lastMeasurementAtS=now-measurementLatency;tr.measurementLatencyS=measurementLatency;tr.trackAgeS=measurementLatency;
@@ -2572,24 +2898,31 @@
     tr.emOnly=emObsDetect>SENSOR_CONFIG.emDetectFloor&&!eoSeen&&!irSeen;
     tr.irOnly=irSeen&&!eoSeen;
     tr.eoBearingOnly=eoSeen&&!tr.eoLrfLocked;
-    tr.passiveBearingOnly=tr.emOnly||tr.irOnly||tr.eoBearingOnly;
-    tr.emBearingOnly=tr.passiveBearingOnly;
-    if(tr.eoLrfLocked){tr.rangeKnown=true;tr.lastNonEmFixAtS=now;tr.rangeMinM=null;tr.rangeMaxM=null;}
-    else if(tr.passiveBearingOnly){tr.rangeKnown=false;tr.rangeMinM=null;tr.rangeMaxM=null;}
     updateEsmUncertaintyArea(tr,observer,obs,dt);
+    // 레이더는 능동이라 스캔 상태에 의존한다. 모드는 트랙 상태에서 나오므로 여기서 정한다.
+    updateRadarTrack(tr,observer,radarObservation(observer,target,radarModeForTarget(observer,tr,target.id)),dt);
+    // RADAR-S2: 확립된 레이더 트랙은 LRF와 나란히 '진짜 거리'를 만드는 두 번째 경로다.
+    // 탐색 단계의 접촉은 아직 아니다 — 확립되고 품질이 붙어야 사격통제로 넘어간다.
+    tr.radarFix=!!tr.radarDetected&&(tr.radarTrackClass==='TWS'||tr.radarTrackClass==='STT')
+      &&(tr.radarTrackQuality||0)>=RADAR_CONFIG.fixTrackQuality&&Number.isFinite(tr.radarRangeM);
+    // 레이더가 거리를 주면 더 이상 '방위만 아는 접촉'이 아니다.
+    tr.passiveBearingOnly=(tr.emOnly||tr.irOnly||tr.eoBearingOnly)&&!tr.radarFix;
+    tr.emBearingOnly=tr.passiveBearingOnly;
+    if(tr.eoLrfLocked||tr.radarFix){tr.rangeKnown=true;tr.lastNonEmFixAtS=now;tr.rangeMinM=null;tr.rangeMaxM=null;}
+    else if(tr.passiveBearingOnly){tr.rangeKnown=false;tr.rangeMinM=null;tr.rangeMaxM=null;}
     tr.emBearingOnly=tr.passiveBearingOnly||esmAreaTrackVisible(tr);
 
-    const emergencyCap=modulePower(observer,'fusion')>.05?1:((observer.design.modules||[]).some(m=>m.type==='fcs')?.58:.28),bearingObs=Math.max(obs.eoBearingQuality,obs.irBearingQuality*.88),rangeObs=tr.eoLrfLocked?Math.max(.98,tr.eoLrfQuality):0,shapeObs=Math.min(1,obs.eoShapeQuality*1.08),velocityObs=tr.eoLrfLocked?eoObsQuality*.94:0;
+    const emergencyCap=modulePower(observer,'fusion')>.05?1:((observer.design.modules||[]).some(m=>m.type==='fcs')?.58:.28),bearingObs=Math.max(obs.eoBearingQuality,obs.irBearingQuality*.88,tr.radarFix?clamp01(.55+.45*(tr.radarTrackQuality||0)):0),radarDq=clamp01(tr.radarDopplerQuality||0),radarRangeObs=tr.radarFix?clamp01(.62+.38*(tr.radarTrackQuality||0)):0,rangeObs=Math.max(tr.eoLrfLocked?Math.max(.98,tr.eoLrfQuality):0,radarRangeObs),shapeObs=Math.min(1,obs.eoShapeQuality*1.08),velocityObs=Math.max(tr.eoLrfLocked?eoObsQuality*.94:0,tr.radarFix?clamp01((tr.radarTrackQuality||0)*(.25+.75*radarDq)):0);
     tr.bearingQuality=approachValue(tr.bearingQuality,Math.min(emergencyCap,bearingObs),dt*(.7+fusion*1.8+Math.max(obs.eoCoverageQuality,obs.irCoverageQuality)*.38));
-    tr.rangeQuality=approachValue(tr.rangeQuality,Math.min(emergencyCap,rangeObs),dt*(tr.eoLrfLocked?4.8:tr.rangeKnown?.22:1.15));
+    tr.rangeQuality=approachValue(tr.rangeQuality,Math.min(emergencyCap,rangeObs),dt*(tr.eoLrfLocked?4.8:tr.radarFix?2.6:tr.rangeKnown?.22:1.15));
     tr.shapeQuality=approachValue(tr.shapeQuality,Math.min(emergencyCap,shapeObs),dt*(.32+fusion*.94+obs.eoCoverageQuality*.42));
-    tr.velocityQuality=approachValue(tr.velocityQuality,Math.min(emergencyCap,velocityObs),dt*(tr.eoLrfLocked?2.8:tr.rangeKnown?.2:1.0));
+    tr.velocityQuality=approachValue(tr.velocityQuality,Math.min(emergencyCap,velocityObs),dt*(tr.eoLrfLocked?2.8:tr.radarFix?1.6:tr.rangeKnown?.2:1.0));
     // EM 신호가 끊기면 분류 신뢰도부터 무너진다. "뭔가 있었다"는 기억은 더 오래 간다.
     if(emObsDetect<=SENSOR_CONFIG.emDetectFloor){tr.emMemoryS=(tr.emMemoryS||0)+dt;tr.emClassifyQuality=Math.max(0,(tr.emClassifyQuality||0)-dt*.35);}
     else tr.emMemoryS=0;
     if(!seen){const decay=dt*.065;tr.bearingQuality=Math.max(0,tr.bearingQuality-decay);tr.rangeQuality=Math.max(0,tr.rangeQuality-decay*.55);tr.velocityQuality=Math.max(0,tr.velocityQuality-decay*.62);tr.shapeQuality=Math.max(0,tr.shapeQuality-decay*.7);}
 
-    const stage=tr.eoIdentificationStage||0,lrfLock=!!tr.eoLrfLocked,quality=clamp01(Math.max(tr.eoQuality,tr.bearingQuality*.82)),stableScale=tr._positionNoiseScale||1,bearingOnly=!!tr.emBearingOnly,coasting=!seen;
+    const stage=tr.eoIdentificationStage||0,lrfLock=!!tr.eoLrfLocked,quality=clamp01(Math.max(tr.eoQuality,tr.bearingQuality*.82)),stableScale=tr._positionNoiseScale||1,bearingOnly=!!tr.emBearingOnly,coasting=!seen,radarOnlyFix=!!tr.radarFix&&!lrfLock&&!eoSeen;
     let offsetLimit;
     if(lrfLock)offsetLimit=2.5+(1-tr.eoLrfQuality)*2.5;
     else if(eoSeen){if(stage>=4)offsetLimit=4;else if(stage===3)offsetLimit=9;else if(stage===2)offsetLimit=22;else offsetLimit=48;offsetLimit*=.72+(1-quality)*.55;}
@@ -2606,6 +2939,21 @@
       velocityFloor=Math.max(8,(tr.velocityUncertaintyMps||8)+dt*2.4);accelerationFloor=Math.max(12,(tr.accelerationUncertaintyMps2||12)+dt*1.8);
       rangeFloorBase=Math.max(1200,(tr.rangeUncertaintyM||1200)+dt*180);positionFloorBase=Math.max(1200,(tr.positionUncertaintyM||1200)+dt*220);
       velRate=.8;accelRate=.7;posRate=.55;
+    }else if(radarOnlyFix){
+      // RADAR-S2 정밀 경로. 위치를 실제 좌표에서 만들지 않고 레이더가 실제로 잰
+      // 극좌표(거리·방위)에서 되짚는다 — 측정 오차가 이미 그 안에 들어 있다.
+      const rr=Math.max(1,Number(tr.radarRangeM)||1),rb=Number(tr.radarBearingRad)||0;
+      const dq=clamp01(tr.radarDopplerQuality||0),bs=Math.max(RADAR_CONFIG.minBearingSigmaRad,tr.radarBearingSigmaRad||0);
+      // 속도는 도플러가 살아 있을 때만 쓸 만하다. 접선 기동이면 오차가 크게 벌어져
+      // 사격해 품질이 그만큼 나빠진다 — 우주에서 접선 기동이 남긴 유일한 효과다.
+      const velocityError=1.5+16*(1-dq);
+      desiredVx=measurement.vx+(tr._velocityBiasX||0)*velocityError;desiredVy=measurement.vy+(tr._velocityBiasY||0)*velocityError;
+      desiredAx=measurement.ax;desiredAy=measurement.ay;
+      desiredX=observer.x+Math.cos(rb)*rr;desiredY=observer.y+Math.sin(rb)*rr;
+      velRate=5;accelRate=3.5;posRate=7;
+      velocityFloor=Math.max(1.2,velocityError);accelerationFloor=Math.max(2.5,6*(1-dq)+1.5);
+      rangeFloorBase=Math.max(4,Number(tr.radarRangeSigmaM)||40);
+      positionFloorBase=Math.max(rangeFloorBase,Math.hypot(rangeFloorBase,rr*bs));
     }else if(bearingOnly){
       // 수동 EO/IR/ESM은 방위만 제공한다. 실제 표적 거리·속도·가속도는 여기서 절대 읽지 않는다.
       // 최근 LRF 거리 기억이 잠깐 남아 있으면 그 기억만 사행시키고, 아니면 센서별 거친 명목 거리점을 둔다.
@@ -2645,7 +2993,7 @@
     const eoHalf=Number(obs.eoBearingHalfRad)||Infinity,irHalf=Number(obs.irBearingHalfRad)||Infinity,emHalf=Number(obs.emBearingHalfRad)||Infinity,bearingOnlyHalf=tr.eoBearingOnly?eoHalf:tr.irOnly?irHalf:emHalf,rawHalf=bearingOnly?bearingOnlyHalf:Math.min(eoHalf,irHalf),bearingFloor=Math.max(.00004,(Number.isFinite(rawHalf)?rawHalf:.35)*(.035+(1-(bearingOnly?Math.max(tr.eoQuality,tr.irQuality,tr.emQuality):tr.bearingQuality))*.14),tr.positionUncertaintyM/Math.max(1,tr.rangeEstimateM)*.35);tr.bearingUncertaintyRad=approachValue(tr.bearingUncertaintyRad||bearingFloor,bearingFloor,1-Math.exp(-dt*(lrfLock?9:bearingOnly?2.5:coasting?1.1:4)));
     tr.csM2=obs.csM2;tr.irSignature=obs.irSignature;tr.actualDistanceM=seen&&tr.rangeKnown?obs.distanceM:null;
     tr.lockQuality=clamp01(tr.bearingQuality*.3+tr.rangeQuality*.28+tr.velocityQuality*.28+tr.shapeQuality*.14);
-    if(seen)tr.source=tr.emOnly?'ESM':eoSeen&&irSeen?(tr.eoLrfLocked?'EO/LRF+IR':'EO+IR'):eoSeen?(tr.eoLrfLocked?'EO/LRF':'EO'):irSeen?'IR':emObsDetect>SENSOR_CONFIG.emDetectFloor?'ESM':tr.source;
+    if(seen||tr.radarFix)tr.source=tr.radarFix?(eoSeen?(tr.eoLrfLocked?'RDR+EO/LRF':'RDR+EO'):irSeen?'RDR+IR':tr.radarTrackClass==='STT'?'RDR STT':'RADAR'):tr.emOnly?'ESM':eoSeen&&irSeen?(tr.eoLrfLocked?'EO/LRF+IR':'EO+IR'):eoSeen?(tr.eoLrfLocked?'EO/LRF':'EO'):irSeen?'IR':emObsDetect>SENSOR_CONFIG.emDetectFloor?'ESM':tr.source;
     tr.detected=tr.detectionQuality>.05&&tr.lastSeenS<SENSOR_CONFIG.trackLostS;
     tr.irCueStrength=obs.irCueStrength;tr.irBearingHalfRad=Math.max(3*Math.PI/180,obs.irBearingHalfRad||Math.max(4,24-tr.irQuality*14-irf*6)*Math.PI/180);tr.irBearingHalfDeg=tr.irBearingHalfRad*180/Math.PI;tr.irCueActive=obs.irActive&&tr.detected&&tr.irQuality>.025;tr.irSensorCount=obs.irMatchedSensors||0;tr.eoSensorCount=obs.eoMatchedSensors||0;tr.fusionInputScale=inputScale;tr.fusionPrecision=!!precision;
     return tr;
@@ -3694,6 +4042,29 @@
         // Sea Power식 방위 스트로브: 약한 신호는 부채꼴이 넓게 벌어지고, 강해질수록 좁혀진다.
         signalSigmaWideScale:6
       })
+    }),
+    // 레이더는 회전하는 대형 어레이라 하늘이 넓게 트여 있어야 한다. 노출 요구가 가장
+    // 빡빡하고(minExposureFraction), 대신 트인 면 하나가 아주 넓은 부채꼴을 준다 —
+    // 회전이 나머지를 메우기 때문이다. 빔이 좁아 방위 정밀도는 세 계열 중 가장 좋다.
+    radar:Object.freeze({
+      id:'radar',label:'RADAR',moduleTypes:Object.freeze(['radar']),
+      minExposureFraction:.3,exposureSampleStepSub:.2,probeInsideSub:.08,probeOutsideSub:.12,originOffsetSub:.22,
+      halfAngleMinDeg:35,halfAngleMaxDeg:120,precisionMin:.4,precisionMax:1,
+      selfClearanceM:1.4,occludeHull:true,occludeWalls:true,minAngularSamples:16,angularSamplesPerDeg:1.1,visibilityPrecisionFloor:.4,
+      visual:Object.freeze({
+        installedVisibleRgb:'96,226,214',installedBlockedFill:'rgba(64,102,104,.08)',installedHatch:'rgba(198,248,244,.34)',
+        previewVisibleRgb:'126,240,228',previewBlockedFill:'rgba(70,110,112,.14)',previewHatch:'rgba(214,252,248,.5)',
+        invalidVisibleRgb:'255,88,88',invalidBlockedFill:'rgba(112,72,72,.16)',label:'rgba(186,246,240,.9)'
+      }),
+      response:Object.freeze({
+        minPower:.08,noCoverageHalfDeg:20,moduleHealthFloor:.12,moduleHealthExponent:.8,powerFloor:.2,
+        centerFloor:.5,precisionFloor:.4,coverageExposureFloor:.35,coverageOpenFloor:.35,
+        // 빔폭이 좁아 기본 시그마가 작다. 반사 세기가 약할수록 넓어지지만 ESM만큼 벌어지지는 않는다.
+        sigmaBaseDeg:.9,sigmaPrecisionDeg:3.2,edgeSigmaScale:1.6,powerSigmaScale:.7,healthSigmaScale:1.1,
+        coverageSigmaFloor:.6,qualityFloor:.45,detectFloor:.3,bearingHalfSigmaScale:1.2,bearingHalfMinDeg:.35,
+        bearingHalfMaxDeg:12,bearingQualityMaxSigmaDeg:10,cueSignalFloor:.04,cueSignalRange:3,cueCoverageFloor:.4,
+        activeThreshold:.02,signalSigmaWideScale:2.2
+      })
     })
   });
   const sensorCoverageCache=new WeakMap();
@@ -3721,6 +4092,9 @@
   function esmSensorCoverageData(d,m){return sensorModuleCoverageData(d,m,'esm');}
   function shipEsmSensors(ship){return shipSensorModules(ship,'esm');}
   function esmSensorResponse(observer,target,bearing,distanceM,emSignalMW,emBaseQuality){return sensorDirectionalResponse(observer,target,bearing,distanceM,emBaseQuality,{sensorType:'esm',signalStrength:emSignalMW});}
+  function radarSensorCoverageData(d,m){return sensorModuleCoverageData(d,m,'radar');}
+  function shipRadarSensors(ship){return shipSensorModules(ship,'radar');}
+  function radarSensorResponse(observer,target,bearing,distanceM,returnStrength,radarBaseQuality){return sensorDirectionalResponse(observer,target,bearing,distanceM,radarBaseQuality,{sensorType:'radar',signalStrength:returnStrength});}
   function rectsOverlap(a,b){return a.sx<b.sx+b.sw&&a.sx+a.sw>b.sx&&a.sy<b.sy+b.sh&&a.sy+a.sh>b.sy;}
   function moduleAtSub(d,sx,sy){
     for(let i=d.modules.length-1;i>=0;i--){const m=d.modules[i];if(sx>=m.sx&&sx<m.sx+m.sw&&sy>=m.sy&&sy<m.sy+m.sh)return m;}
@@ -3940,7 +4314,7 @@
     hideArmorJointMenu();activeDesignSide=side;design=side==='player'?playerDesign:enemyDesignState;selectedModuleId=null;selectedHullId=null;wallDraft=null;pipeDraft=null;pipeEraseDraft=null;moduleDragPreview=null;hullDragPreview=null;
     document.getElementById('editPlayer').classList.toggle('active',side==='player');
     document.getElementById('editEnemy').classList.toggle('active',side==='enemy');
-    document.getElementById('designRoleLabel').textContent=side==='player'?'ALLY HULL LAB · 112×64m · PROTO 1.31.27':'ENEMY HULL LAB · 112×64m · PROTO 1.31.27';
+    document.getElementById('designRoleLabel').textContent=side==='player'?'ALLY HULL LAB · 112×64m · PROTO 1.31.29':'ENEMY HULL LAB · 112×64m · PROTO 1.31.29';
     updateBuildMetrics();refreshToolHint();drawBuild();showToast(side==='player'?'아군 설계 편집':'적함 설계 편집');
   }
 
@@ -4971,7 +5345,7 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     applyFlightControl(ship,dt,desiredVelocity,desiredFacing,dyn);
   }
   const AI_SENSOR_CONFIG=Object.freeze({manualVisualRangeM:260,manualVisualReleaseM:330,searchLegMinS:3.8,searchLegMaxS:7.2,searchDriftMps:18,irApproachFraction:.24,eoApproachFraction:.42,lostPositionMemoryS:16,lostBearingMemoryS:8,lostArrivalRadiusM:170});
-  function aiOperationalSensorTypes(ship){const out=[],power=clamp01(ship.powerSystem?.sensorFactor??1);for(const type of ['ir','eo','esm']){const profile=sensorCoverageProfile(type),minPower=profile?.response?.minPower||.02;if(power<=minPower)continue;const usable=shipSensorModules(ship,type).some(sensor=>{const m=(ship.design.modules||[]).find(q=>q.id===sensor.moduleId);return !!(m&&m.hp>0&&sensor.arcs?.some(a=>a.visibleSegments?.length));});if(usable)out.push(type);}return out;}
+  function aiOperationalSensorTypes(ship){const out=[],power=clamp01(ship.powerSystem?.sensorFactor??1);for(const type of ['ir','eo','esm','radar']){const profile=sensorCoverageProfile(type),minPower=profile?.response?.minPower||.02;if(power<=minPower)continue;const usable=shipSensorModules(ship,type).some(sensor=>{const m=(ship.design.modules||[]).find(q=>q.id===sensor.moduleId);return !!(m&&m.hp>0&&sensor.arcs?.some(a=>a.visibleSegments?.length));});if(usable)out.push(type);}return out;}
   function setEnemyAiState(enemy,state,dt){if(enemy.aiState!==state){enemy.aiState=state;enemy.aiStateTime=0;}else enemy.aiStateTime=(enemy.aiStateTime||0)+dt;}
   function ensureEnemyAiMemory(enemy){return enemy.aiMemory||(enemy.aiMemory={positionValid:false,x:0,y:0,vx:0,vy:0,age:999,bearing:null,bearingAge:999,uncertaintyM:9999});}
   function updateEnemyAiMemory(enemy,track,kind,dt){const mem=ensureEnemyAiMemory(enemy);mem.age=(mem.age||0)+dt;mem.bearingAge=(mem.bearingAge||0)+dt;if(kind==='TRACK'||kind==='EO_CONTACT'){mem.positionValid=true;mem.x=track.estimatedX;mem.y=track.estimatedY;mem.vx=(track.velocityQuality||0)>.08?track.estimatedVx:0;mem.vy=(track.velocityQuality||0)>.08?track.estimatedVy:0;mem.age=0;mem.uncertaintyM=Math.max(8,track.positionUncertaintyM||80);mem.bearing=track.bearingEstimate;mem.bearingAge=0;}else if(kind==='IR_CUE'||kind==='EM_CUE'){mem.bearing=kind==='EM_CUE'?(track.emBearing??track.bearingEstimate):track.bearingEstimate;mem.bearingAge=0;}}
@@ -5004,10 +5378,10 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
 
   async function enterImmersive(){try{if(document.documentElement.requestFullscreen&&!document.fullscreenElement)await document.documentElement.requestFullscreen();}catch(_){}try{if(screen.orientation?.lock)await screen.orientation.lock('landscape');}catch(_){}}
   function formatDistanceCompact(m){return m>=1000?`${(m/1000).toFixed(m>=10000?0:1)}km`:`${Math.round(m)}m`;}
-  function updateSortieSummary(){const input=document.getElementById('sortieDistance'),distance=Math.max(1000,Number(input?.value)||5000),value=document.getElementById('sortieDistanceValue'),summary=document.getElementById('sortieSummary');if(value)value.textContent=formatDistanceCompact(distance);if(summary){const phase=distance<=3600?'리피터 교전권':distance<=8000?'150mm 교전권':distance<=20000?'센서 접촉·접근 단계':'장거리 EO/IR 탐색 단계';const fcsReady=moduleCapacity(playerDesign,'fcs')>0?'EO/IR 사통 노드 탑재':'사통 노드 없음 · 제한 비상 추적';summary.textContent=`${phase} · 리피터 최대 3.6km · 150mm 최대 8km · ${fcsReady} · 큰 CS와 강한 IR 신호일수록 초기 접촉이 빠름`;}}
+  function updateSortieSummary(){const input=document.getElementById('sortieDistance'),distance=Math.max(1000,Number(input?.value)||5000),value=document.getElementById('sortieDistanceValue'),summary=document.getElementById('sortieSummary');if(value)value.textContent=formatDistanceCompact(distance);if(summary){const phase=distance<=3600?'리피터 교전권':distance<=8000?'150mm 교전권':distance<=20000?'접근 단계 · EO/LRF 사격해 권역':distance<=60000?'수동 센서 접촉권 · 사격 불가':distance<=200000?'레이더 탐색권 · 수동 센서는 방위만':'초장거리 · 레이더 없이는 접촉 자체가 어려움';const fcsReady=moduleCapacity(playerDesign,'fcs')>0?'EO/IR 사통 노드 탑재':'사통 노드 없음 · 제한 비상 추적';summary.textContent=`${phase} · 리피터 최대 3.6km · 150mm 최대 8km · ${fcsReady} · 큰 CS와 강한 IR 신호일수록 초기 접촉이 빠름`;}}
   function openSortieSetup(){const missingPlayer=validateDesign(playerDesign);if(missingPlayer.length){showToast(`아군 필수 요소 부족: ${missingPlayer.join(', ')}`);setDesignSide('player');return;}const missingEnemy=validateDesign(enemyDesignState);if(missingEnemy.length){showToast(`적함 필수 요소 부족: ${missingEnemy.join(', ')}`);setDesignSide('enemy');return;}const modal=document.getElementById('sortieSetup');updateSortieSummary();modal?.classList.add('visible');modal?.setAttribute('aria-hidden','false');document.getElementById('sortieLaunch')?.focus();}
   function closeSortieSetup(){const modal=document.getElementById('sortieSetup');modal?.classList.remove('visible');modal?.setAttribute('aria-hidden','true');}
-  function startBattle(distanceM=null){const chosen=Math.max(1000,Math.min(50000,Number(distanceM)||Number(document.getElementById('sortieDistance')?.value)||5000));closeSortieSetup();saveDesign();const half=chosen/2;battle={player:createShip('player','아군 함선',playerDesign,-half,0,0,'player'),enemies:[createShip('enemy1','적 함선',enemyDesignState,half,0,Math.random()*Math.PI*2,'enemy')],time:0,startDistanceM:chosen};battle.player.lockId=null;projectiles=[];effects=[];paused=false;autoFire=true;manualFireHeld=false;resetWeaponHudState();renderWeaponControlPanel(true);battleView.offsetX=0;battleView.offsetY=0;battleView.zoomMul=.9;document.getElementById('battleAlerts')?.replaceChildren();updateSensorSystems([battle.player,...battle.enemies],.35);for(const s of [battle.player,...battle.enemies])updateFireControlSystems(s,.12);{const layers=shieldLayerEntries(battle.player),guns=[...new Set(battle.player.design.modules.filter(m=>m.type==='gun'&&gunProfileForModule(m).weaponId).map(m=>gunProfileForModule(m).name))],shieldText=layers.length?layers.map(({profile,layer})=>`${profile.size}×${layer.units.toFixed(1)} ${formatEnergyMJ(Object.values(layer.pools).reduce((a,p)=>a+p.maxMJ,0))}`).join(' → '):'보호막 없음';addLog(`${formatDistanceCompact(chosen)} 출격 · ${guns.join(' / ')||'포탑 없음'} · ${shieldText}`,'info');}switchScene('battle');enterImmersive();resizeCanvases();const hint=document.getElementById('gestureHint');hint.classList.remove('fade');requestAnimationFrame(()=>hint.classList.add('fade'));}
+  function startBattle(distanceM=null){const chosen=Math.max(1000,Math.min(250000,Number(distanceM)||Number(document.getElementById('sortieDistance')?.value)||5000));closeSortieSetup();saveDesign();const half=chosen/2;battle={player:createShip('player','아군 함선',playerDesign,-half,0,0,'player'),enemies:[createShip('enemy1','적 함선',enemyDesignState,half,0,Math.random()*Math.PI*2,'enemy')],time:0,startDistanceM:chosen};battle.player.lockId=null;projectiles=[];effects=[];paused=false;autoFire=true;manualFireHeld=false;resetWeaponHudState();renderWeaponControlPanel(true);battleView.offsetX=0;battleView.offsetY=0;battleView.zoomMul=.9;document.getElementById('battleAlerts')?.replaceChildren();updateSensorSystems([battle.player,...battle.enemies],.35);for(const s of [battle.player,...battle.enemies])updateFireControlSystems(s,.12);{const layers=shieldLayerEntries(battle.player),guns=[...new Set(battle.player.design.modules.filter(m=>m.type==='gun'&&gunProfileForModule(m).weaponId).map(m=>gunProfileForModule(m).name))],shieldText=layers.length?layers.map(({profile,layer})=>`${profile.size}×${layer.units.toFixed(1)} ${formatEnergyMJ(Object.values(layer.pools).reduce((a,p)=>a+p.maxMJ,0))}`).join(' → '):'보호막 없음';addLog(`${formatDistanceCompact(chosen)} 출격 · ${guns.join(' / ')||'포탑 없음'} · ${shieldText}`,'info');}switchScene('battle');enterImmersive();resizeCanvases();const hint=document.getElementById('gestureHint');hint.classList.remove('fade');requestAnimationFrame(()=>hint.classList.add('fade'));}
 
   function getShipById(id){if(!battle)return null;if(battle.player.id===id)return battle.player;return battle.enemies.find(e=>e.id===id)||null;}
   // 연결성이 1인 온전한 함선에서 타일이 살아 있는 채 HP만 감소하면 연결 그래프는 변하지 않는다.
@@ -5331,7 +5705,7 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
 
   function getCameraBase(){
     if(!battle)return {x:0,y:0,fitZoom:.55};const p=battle.player;let t=getShipById(p.lockId);if(!t?.alive)t=battle.enemies.find(e=>e.alive)||null;
-    if(t){const dx=t.x-p.x,dy=t.y-p.y,marginX=shipRadius(p)+shipRadius(t)+240,marginY=shipRadius(p)+shipRadius(t)+180,distX=Math.abs(dx)+marginX,distY=Math.abs(dy)+marginY;return {x:p.x+dx*.55,y:p.y+dy*.5,fitZoom:Math.max(.012,Math.min(1.2,Math.min((battleCanvas.width*.82)/distX,(battleCanvas.height*.76)/distY))) };}
+    if(t){const dx=t.x-p.x,dy=t.y-p.y,marginX=shipRadius(p)+shipRadius(t)+240,marginY=shipRadius(p)+shipRadius(t)+180,distX=Math.abs(dx)+marginX,distY=Math.abs(dy)+marginY;return {x:p.x+dx*.55,y:p.y+dy*.5,fitZoom:Math.max(TACTICAL_SENSOR_CONFIG.minCameraZoom,Math.min(1.2,Math.min((battleCanvas.width*.82)/distX,(battleCanvas.height*.76)/distY))) };}
     return {x:p.x,y:p.y,fitZoom:Math.min(1.1,Math.max(.34,battleCanvas.height/760))};
   }
   function computeCamera(){const base=getCameraBase();camera.x=base.x+battleView.offsetX;camera.y=base.y+battleView.offsetY;camera.zoom=Math.max(TACTICAL_SENSOR_CONFIG.minCameraZoom,Math.min(4.2,base.fitZoom*battleView.zoomMul));}
@@ -5591,9 +5965,9 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     else{set('heatDumpNote',n=>n.textContent='미탑재');set('heatDumpValue',n=>n.textContent='N/A');if(dumpBtn){dumpBtn.disabled=true;dumpBtn.classList.add('off');dumpBtn.textContent='없음';}}
   }
   function updateShipSensorPanel(ship){
-    const el=document.getElementById('combatAid');if(!el||!el.classList.contains('sensor')||!ship)return;const tracks=Object.values(ship.sensorTracks||{}),areas=tracks.filter(esmAreaTrackVisible),precise=tracks.filter(tr=>tr?.detected&&tr.rangeKnown!==false&&!tr.emOnly),esmModules=(ship.design.modules||[]).filter(m=>m.type==='esm'&&m.hp>0),esmPower=modulePower(ship,'esm');
-    const set=(id,text)=>{const n=document.getElementById(id);if(n)n.textContent=text;};set('sensorViewMode',isTacticalSensorView()?'광역 전술 센서 화면':'근거리 전투 화면');set('sensorViewScale',`${(battleVisibleWorldWidthM()/1000).toFixed(1)} km`);set('sensorEsmStatus',esmModules.length?`${esmPower>.05?'ONLINE':'OFFLINE'} · ${esmModules.length}기`:'미탑재');set('sensorEsmContacts',`${areas.length}개`);set('sensorPreciseTracks',`${precise.length}개`);set('sensorRadarStatus','미탑재 · RADAR-T0A');set('sensorContactSummary',areas.length||precise.length?`${areas.length+precise.length} CONTACT`:'NO CONTACT');set('sensorPanelHint',isTacticalSensorView()?'드래그: 이동 · 휠/핀치: 축척':'18km 이상 표시 폭에서 자동 전환');
-    const rows=document.getElementById('sensorContactRows');if(!rows)return;rows.replaceChildren();const data=[...areas.map((tr,i)=>({tag:`E${i+1}`,text:`EM AREA · ${esmAreaRangeLabel(tr)} · ${(tr.emBands||[]).slice(0,2).map(b=>b.short).join('·')||'미분류'}`,age:`${(tr.esmAreaAgeS||0).toFixed(1)}s`})),...precise.map((tr,i)=>({tag:`T${i+1}`,text:`${tr.source} · ${sensorTrackLabel(tr)}`,age:`±${Math.round(tr.positionUncertaintyM||0)}m`}))].slice(0,9);for(const q of data){const row=document.createElement('div');row.className='sensorContactRow';const a=document.createElement('span');a.className='sensorContactTag';a.textContent=q.tag;const b=document.createElement('span');b.className='sensorContactText';b.textContent=q.text;const c=document.createElement('span');c.className='sensorContactAge';c.textContent=q.age;row.append(a,b,c);rows.appendChild(row);}if(!data.length){const row=document.createElement('div');row.className='sensorContactRow';row.innerHTML='<span class="sensorContactTag">--</span><span class="sensorContactText">감지된 센서 접촉 없음</span><span class="sensorContactAge">--</span>';rows.appendChild(row);}
+    const el=document.getElementById('combatAid');if(!el||!el.classList.contains('sensor')||!ship)return;const tracks=Object.values(ship.sensorTracks||{}),areas=tracks.filter(esmAreaTrackVisible),precise=tracks.filter(tr=>tr?.detected&&tr.rangeKnown!==false&&!tr.emOnly),esmModules=(ship.design.modules||[]).filter(m=>m.type==='esm'&&m.hp>0),esmPower=modulePower(ship,'esm'),radarModules=(ship.design.modules||[]).filter(m=>m.type==='radar'&&m.hp>0),radarContacts=tracks.filter(tr=>tr?.radarFix),radarOn=radarOperationalFactor(ship)>0;
+    const set=(id,text)=>{const n=document.getElementById(id);if(n)n.textContent=text;};set('sensorViewMode',isTacticalSensorView()?'광역 전술 센서 화면':'근거리 전투 화면');set('sensorViewScale',`${(battleVisibleWorldWidthM()/1000).toFixed(1)} km`);set('sensorEsmStatus',esmModules.length?`${esmPower>.05?'ONLINE':'OFFLINE'} · ${esmModules.length}기`:'미탑재');set('sensorEsmContacts',`${areas.length}개`);set('sensorPreciseTracks',`${precise.length}개`);set('sensorRadarStatus',radarModules.length?(radarOn?`${radarEmissionMode(ship)} · ${radarContacts.length}접촉`:'EMCON 침묵'):'미탑재');set('sensorContactSummary',areas.length||precise.length||radarContacts.length?`${areas.length+precise.length} CONTACT`:'NO CONTACT');set('sensorPanelHint',isTacticalSensorView()?'드래그: 이동 · 휠/핀치: 축척':'18km 이상 표시 폭에서 자동 전환');
+    const rows=document.getElementById('sensorContactRows');if(!rows)return;rows.replaceChildren();const data=[...radarContacts.map((tr,i)=>({tag:`R${i+1}`,text:`${tr.radarTrackClass||'TWS'} · ${(tr.radarRangeM/1000).toFixed(1)}km · ${tr.radarRangeRateMps==null?'ΔR 미상':`${tr.radarRangeRateMps<0?'접근':'이탈'} ${Math.abs(Math.round(tr.radarRangeRateMps))}m/s`}`,age:`${Math.round(clamp01(tr.radarTrackQuality||0)*100)}%`})),...areas.map((tr,i)=>({tag:`E${i+1}`,text:`EM AREA · ${esmAreaRangeLabel(tr)} · ${(tr.emBands||[]).slice(0,2).map(b=>b.short).join('·')||'미분류'}`,age:`${(tr.esmAreaAgeS||0).toFixed(1)}s`})),...precise.map((tr,i)=>({tag:`T${i+1}`,text:`${tr.source} · ${sensorTrackLabel(tr)}`,age:`±${Math.round(tr.positionUncertaintyM||0)}m`}))].slice(0,9);for(const q of data){const row=document.createElement('div');row.className='sensorContactRow';const a=document.createElement('span');a.className='sensorContactTag';a.textContent=q.tag;const b=document.createElement('span');b.className='sensorContactText';b.textContent=q.text;const c=document.createElement('span');c.className='sensorContactAge';c.textContent=q.age;row.append(a,b,c);rows.appendChild(row);}if(!data.length){const row=document.createElement('div');row.className='sensorContactRow';row.innerHTML='<span class="sensorContactTag">--</span><span class="sensorContactText">감지된 센서 접촉 없음</span><span class="sensorContactAge">--</span>';rows.appendChild(row);}
   }
 
   function drawCombatAid(){
@@ -5714,11 +6088,55 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     ctx.restore();
   }
   function drawTacticalRoute(ctx,ship){const route=ship.waypoints||[];if(!route.length)return;const own=worldToScreen(ship.x,ship.y);ctx.save();ctx.strokeStyle='rgba(105,212,255,.62)';ctx.lineWidth=1.25;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(own.x,own.y);for(const wp of route){const p=worldToScreen(wp.x,wp.y);ctx.lineTo(p.x,p.y);}ctx.stroke();ctx.setLineDash([]);route.forEach((wp,i)=>{const p=worldToScreen(wp.x,wp.y);ctx.strokeStyle='rgba(126,221,255,.76)';ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(205,242,255,.82)';ctx.font='7px ui-monospace';ctx.textAlign='center';ctx.fillText(String(i+1),p.x,p.y+2);});ctx.restore();}
+  // ── 레이더 스윕 ───────────────────────────────────────────────────────────
+  // 회전하는 두 면이 지금 어디를 보고 있는지를 그대로 그린다. 사각이 돌아가는 것이
+  // 눈에 보여야 "지금 저쪽은 못 보고 있다"는 판단이 성립한다.
+  function drawTacticalRadarSweep(ctx,ship){
+    const profile=shipRadarProfile(ship);
+    if(!profile||radarOperationalFactor(ship)<=0)return;
+    const own=worldToScreen(ship.x,ship.y),reach=Math.hypot(battleCanvas.width,battleCanvas.height);
+    const st=radarSystemState(ship),faces=radarFaceBearings(profile,battle?.time||0,st.rotationPhase,ship.angle||0);
+    const forRad=Math.max(.01,(profile.performance.faceFieldOfRegardDeg||60)*Math.PI/180);
+    // 탐지 반경을 실제 방정식에서 되짚어 그린다 — 표시가 모델과 어긋나지 않게.
+    const detM=radarDetectionRangeM(RADAR_CONFIG.refRcsM2,radarModeBoost(profile,'SEARCH')*radarOperationalFactor(ship));
+    const detPx=detM*camera.zoom;
+    ctx.save();
+    if(detPx>24&&detPx<reach*3){
+      ctx.strokeStyle='rgba(96,226,214,.16)';ctx.setLineDash([3,9]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(own.x,own.y,detPx,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    }
+    for(const f of faces){
+      const g=ctx.createRadialGradient(own.x,own.y,0,own.x,own.y,reach);
+      g.addColorStop(0,'rgba(96,226,214,.16)');g.addColorStop(1,'rgba(96,226,214,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(own.x,own.y);ctx.arc(own.x,own.y,reach,f-forRad,f+forRad);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='rgba(96,226,214,.34)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(own.x,own.y);ctx.lineTo(own.x+Math.cos(f)*reach,own.y+Math.sin(f)*reach);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // 레이더가 확립한 접촉. 정밀 트랙 심볼과 달리 거리변화율과 트랙 등급을 함께 적는다.
+  function drawTacticalRadarContact(ctx,tr,index){
+    if(!tr?.radarFix||!Number.isFinite(tr.radarRangeM))return;
+    const p=worldToScreen(tr.estimatedX,tr.estimatedY);
+    const q=clamp01(tr.radarTrackQuality||0),ring=Math.max(9,Math.min(46,(tr.positionUncertaintyM||0)*camera.zoom));
+    ctx.save();
+    ctx.strokeStyle=`rgba(96,226,214,${.45+q*.45})`;ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.arc(p.x,p.y,ring,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p.x-ring-5,p.y);ctx.lineTo(p.x-ring+3,p.y);ctx.moveTo(p.x+ring-3,p.y);ctx.lineTo(p.x+ring+5,p.y);ctx.stroke();
+    const rate=tr.radarRangeRateMps;
+    const rateText=rate==null?'ΔR 미상':`${rate<0?'▼':'▲'}${Math.abs(Math.round(rate))}m/s`;
+    ctx.textAlign='center';ctx.font='700 9px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(186,246,240,.96)';
+    ctx.fillText(`R${String(index+1).padStart(2,'0')} ${tr.radarTrackClass||'TWS'} · ${(tr.radarRangeM/1000).toFixed(1)}km`,p.x,p.y-ring-9);
+    ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillStyle='rgba(140,214,208,.86)';
+    ctx.fillText(`${rateText} · 품질 ${Math.round(q*100)}%${(tr.radarNctrStage||0)>=1?' · 식별':''}`,p.x,p.y+ring+11);
+    ctx.restore();
+  }
   function drawTacticalSensorView(ctx,w,h,ship){
-    drawTacticalGrid(ctx,w,h,ship);drawTacticalRoute(ctx,ship);const own=worldToScreen(ship.x,ship.y);drawTacticalShipSymbol(ctx,own.x,own.y,ship.angle,'player','OWN SHIP');
+    drawTacticalGrid(ctx,w,h,ship);drawTacticalRoute(ctx,ship);drawTacticalRadarSweep(ctx,ship);const own=worldToScreen(ship.x,ship.y);drawTacticalShipSymbol(ctx,own.x,own.y,ship.angle,'player','OWN SHIP');
     const tracks=Object.values(ship.sensorTracks||{});let areaIndex=0;for(const tr of tracks)if(esmAreaTrackVisible(tr))drawTacticalEsmArea(ctx,tr,areaIndex++,ship);
+    let radarIndex=0;for(const tr of tracks)if(tr?.radarFix)drawTacticalRadarContact(ctx,tr,radarIndex++);
     for(const tr of tracks){if(!tr?.detected||tr.rangeKnown===false||tr.emOnly)continue;const p=worldToScreen(tr.estimatedX,tr.estimatedY),src=(tr.source||'TRACK').replace('EO/LRF','EO'),speed=Math.hypot(tr.estimatedVx||0,tr.estimatedVy||0),heading=tr.velocityQuality>.15&&speed>.5?Math.atan2(tr.estimatedVy,tr.estimatedVx):0;drawTacticalShipSymbol(ctx,p.x,p.y,heading,'enemy',`${src} · ${sensorTrackLabel(tr).split(' · ')[1]||''}`,Math.min(5000,tr.positionUncertaintyM||0));}
-    ctx.save();ctx.fillStyle='rgba(3,12,19,.78)';ctx.fillRect(10,10,254,42);ctx.strokeStyle='rgba(143,202,228,.22)';ctx.strokeRect(10.5,10.5,253,41);ctx.fillStyle='rgba(208,239,250,.95)';ctx.font='800 11px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('TACTICAL SENSOR VIEW',20,27);ctx.fillStyle='rgba(145,181,198,.82)';ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillText(`${(battleVisibleWorldWidthM()/1000).toFixed(1)}km WIDE · EM AREA ${areaIndex} · PRECISE ${tracks.filter(t=>t?.detected&&t.rangeKnown!==false&&!t.emOnly).length}`,20,42);ctx.restore();
+    ctx.save();ctx.fillStyle='rgba(3,12,19,.78)';ctx.fillRect(10,10,254,42);ctx.strokeStyle='rgba(143,202,228,.22)';ctx.strokeRect(10.5,10.5,253,41);ctx.fillStyle='rgba(208,239,250,.95)';ctx.font='800 11px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.fillText('TACTICAL SENSOR VIEW',20,27);ctx.fillStyle='rgba(145,181,198,.82)';ctx.font='8px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.fillText(`${(battleVisibleWorldWidthM()/1000).toFixed(1)}km WIDE · EM ${areaIndex} · RDR ${radarIndex} · PRECISE ${tracks.filter(t=>t?.detected&&t.rangeKnown!==false&&!t.emOnly).length}`,20,42);ctx.restore();
   }
 
   function drawBattle(){
@@ -6013,7 +6431,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   window.__SPACEFRAME_PERF_H3_BENCHMARK__=(rounds=7,extraPipes=120)=>{const sample=mode=>{const times=[];for(let r=0;r<Math.max(1,rounds);r++){const d=defaultDesign(),seed=ensurePerfThermalPipe(d);for(let i=0;i<extraPipes;i++){const y=.25+(i%Math.max(1,Math.floor(SUB_H-.5))),x0=.25+((i*3)%Math.max(1,Math.floor(SUB_W-8))),x1=Math.min(SUB_W-.25,x0+6);d.pipes.push(makePipe(x0,y,x1,y,{pipeProfileId:i%5===0?'trunk':'distribution'}));}const base=thermalNetworkTemplate(d),pipe=seed,mid={x:(pipe.ax+pipe.bx)*.5,y:(pipe.ay+pipe.by)*.5},dir=pipeDirection(pipe),a={x:mid.x-dir.uy*.5,y:mid.y+dir.ux*.5},b={x:mid.x+dir.uy*.5,y:mid.y-dir.ux*.5};cutThermalPipesAlongSegment(d,a,b,THERMAL_PIPE_KINETIC_CUT_M,Infinity);const integration=thermalPipeIntegrationForDesign(d),t0=performance.now();if(mode==='fast')thermalNetworkTemplateRefreshPipes(d,base,integration);else thermalNetworkTemplate(d);times.push(performance.now()-t0);}times.sort((a,b)=>a-b);return {times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0};};const fast=sample('fast'),full=sample('full');return {version:'1.31.17',model:'pipe-only-thermal-template-refresh-v1',rounds,extraPipes,fast,full,speedup:full.medianMs/Math.max(1e-9,fast.medianMs)};};
   window.__SPACEFRAME_PERF_H4_BENCHMARK__=(rounds=7,extraPipes=200,hitCount=8)=>{const batchedTimes=[],sequentialTimes=[];let parity=true,lastBatched='',lastSequential='';for(let r=0;r<Math.max(1,rounds);r++){const base=defaultDesign(),created=[];for(let i=0;i<Math.max(hitCount,extraPipes);i++){const y=.35+(i%Math.max(1,Math.floor(SUB_H-1))),x0=.35+((i*5)%Math.max(1,Math.floor(SUB_W-10))),x1=Math.min(SUB_W-.35,x0+7),pipe=makePipe(x0,y,x1,y,{pipeProfileId:i%5===0?'trunk':'distribution'});base.pipes.push(pipe);created.push(pipe);}const cuts=created.slice(0,Math.max(1,Math.min(hitCount,created.length))).map(pipe=>{const mid={x:(pipe.ax+pipe.bx)*.5,y:(pipe.ay+pipe.by)*.5},dir=pipeDirection(pipe);return {a:{x:mid.x-dir.uy*.5,y:mid.y+dir.ux*.5},b:{x:mid.x+dir.uy*.5,y:mid.y-dir.ux*.5}};}),bat=createShip(`__perf_h4_bat_${r}`,'PERF-H4 BATCH',cloneDesign(base),0,0,0,'player'),seq=createShip(`__perf_h4_seq_${r}`,'PERF-H4 SEQ',cloneDesign(base),0,0,0,'player');let t0=performance.now();beginThermalPipeRefreshBatch();for(const cut of cuts){damageThermalPipesAlongSegment(bat,cut.a,cut.b,{kind:'kinetic',damageHp:Infinity,deferMerge:true});scheduleThermalPipeNetworkRefreshAfterDamage(bat,{stats:{}});}endThermalPipeRefreshBatch([bat]);batchedTimes.push(performance.now()-t0);t0=performance.now();for(const cut of cuts){damageThermalPipesAlongSegment(seq,cut.a,cut.b,{kind:'kinetic',damageHp:Infinity});refreshThermalPipeNetworkAfterDamage(seq);}sequentialTimes.push(performance.now()-t0);lastBatched=bat.heat.network.template.signature;lastSequential=seq.heat.network.template.signature;const physicalKey=ship=>{const integration=thermalPipeIntegrationForDesign(ship.design),edges=(ship.heat.network.template.edges||[]).map(q=>[q.source,q.a,q.b,+q.baseConductanceMW.toFixed(9),+(q.pipeCapacityMW||0).toFixed(9)]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),sectorEdges=(integration.sectorEdges||[]).map(q=>[Math.min(q.a,q.b),Math.max(q.a,q.b),+q.baseConductanceMW.toFixed(9),+(q.capacityMW||0).toFixed(9),q.routeCount||0]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),lengths={};for(const pipe of ship.design.pipes||[]){const id=inferPipeProfileId(pipe);lengths[id]=(lengths[id]||0)+pipeLengthSub(pipe);}return JSON.stringify({pipeCount:(ship.design.pipes||[]).length,lengths:Object.fromEntries(Object.entries(lengths).map(([k,v])=>[k,+v.toFixed(9)])),connectedCount:integration.connectedCount||0,routeCount:integration.routeCount||0,edgeCapacityMW:+(integration.edgeCapacityMW||0).toFixed(9),circulationCapMW:+(integration.circulationCapMW||0).toFixed(9),sectorEdges,edges,stored:+thermalNetworkTotalStored(ship.heat.network).toFixed(9)});};parity=parity&&physicalKey(bat)===physicalKey(seq);}batchedTimes.sort((a,b)=>a-b);sequentialTimes.sort((a,b)=>a-b);const summary=times=>({times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0});const batched=summary(batchedTimes),sequential=summary(sequentialTimes);return {version:'1.31.17',model:'same-tick-pipe-refresh-batch-v1',rounds,extraPipes,hitCount,batched:{...batched,finalSignature:lastBatched},sequential:{...sequential,finalSignature:lastSequential},speedup:sequential.medianMs/Math.max(1e-9,batched.medianMs),parity};};
   window.__SPACEFRAME_PERF_H5_BENCHMARK__=(rounds=7,rayCount=44,moduleCount=320,wallCount=220,groupsPerRound=500)=>{const makeDesign=()=>{const d=defaultDesign();for(let i=0;i<moduleCount;i++){const base=makeModule(i%6===0?'reactor':'ammo',2+(i*7)%(SUB_W-6),2+(i*11)%(SUB_H-6),1.25+(i%3)*.25,1.25+((i>>1)%3)*.25);base.id=`h5m${i}`;d.modules.push(base);}for(let i=0;i<wallCount;i++){const vertical=i%2===0,x=1+(i*13)%(SUB_W-3),y=1+(i*17)%(SUB_H-3),w=makeWall('bulkhead',vertical?'v':'h',x,y,3+(i%7),70,'bulkheadSteel');w.id=`h5w${i}`;d.walls.push(w);}fragmentCollisionCache.delete(d);return d;},sample=mode=>{const times=[],checks=[];for(let r=0;r<Math.max(1,rounds);r++){const d=makeDesign(),index=fragmentCollisionIndex(d),origin={x:SUB_W*.42,y:SUB_H*.51},dirs=[];for(let i=0;i<rayCount;i++){const a=-.72+(i+.5)/rayCount*1.44;dirs.push({x:Math.cos(a),y:Math.sin(a)});}let checksum=0,totalHits=0,totalMisses=0,t0=performance.now();for(let g=0;g<Math.max(1,groupsPerRound);g++){const group=mode==='shared'?createFragmentCandidateGroup(index):null;for(const dir of dirs){const maxDist=14/SUB_METERS;let boundaries,walls,modules,limit,rayEnd;if(group){const q=fragmentCandidateBundleForRay(group,origin,dir,maxDist);boundaries=q.boundaries;walls=q.bulkheads;modules=q.modules;limit=q.limit;rayEnd=q.rayEnd;}else{const end={x:origin.x+dir.x*maxDist,y:origin.y+dir.y*maxDist};boundaries=combatSpatialCandidates(index.spatial.boundaries,origin,end);const exit=nearestHullExitSub(index,origin,dir,maxDist,boundaries);limit=exit?Math.min(maxDist,exit.dist):maxDist;rayEnd={x:origin.x+dir.x*limit,y:origin.y+dir.y*limit};walls=combatSpatialCandidates(index.spatial.bulkheads,origin,rayEnd);modules=combatSpatialCandidates(index.spatial.modules,origin,rayEnd);}let wallHits=0,moduleHits=0;for(const w of walls){const e=wallEndpointsSub(w),hit=segmentIntersection(origin.x,origin.y,rayEnd.x,rayEnd.y,e.x1,e.y1,e.x2,e.y2);if(hit&&hit.t>1e-5&&hit.t<1-1e-5)wallHits++;}for(const m of modules){const q=rayRectIntervalSub(origin,dir,m,limit);if(q&&q.entry<limit-1e-5)moduleHits++;}checksum+=boundaries.length*3+wallHits*5+moduleHits*7;}if(group){totalHits+=group.cellCacheHits;totalMisses+=group.cellCacheMisses;}}times.push(performance.now()-t0);checks.push({checksum,hits:totalHits,misses:totalMisses});}times.sort((a,b)=>a-b);return {times,minMs:times[0]||0,medianMs:times[Math.floor(times.length/2)]||0,maxMs:times[times.length-1]||0,checks};},shared=sample('shared'),legacy=sample('legacy'),parity=shared.checks.every((q,i)=>q.checksum===legacy.checks[i].checksum);return {version:'1.31.17',model:'fragment-group-shared-spatial-cell-cache-v1',rounds,rayCount,moduleCount,wallCount,groupsPerRound,shared,legacy,speedup:legacy.medianMs/Math.max(1e-9,shared.medianMs),parity};};
-  window.__SPACEFRAME_SIGNATURE_TEST__=()=>{const g=designSignatureGeometrySolution(design);return {version:'1.31.17',model:'live-hull-projection+directional-facet-rcs-v1',radarIntegrated:false,config:SIGNATURE_GEOMETRY_CONFIG,current:{tiles:g.tiles.length,facets:g.facets.length,corners:g.corners.length,externalModules:g.modules.length,csMin:g.csMin,csMax:g.csMax,rcsMin:g.rcsMin,rcsMax:g.rcsMax},run:runSignatureGeometrySelfTest(),benchmark:signatureGeometryBenchmark(design,5)};};
+  window.__SPACEFRAME_SIGNATURE_TEST__=()=>{const g=designSignatureGeometrySolution(design);return {version:'1.31.28',model:'live-hull-projection+directional-facet-rcs-v1',radarIntegrated:true,config:SIGNATURE_GEOMETRY_CONFIG,current:{tiles:g.tiles.length,facets:g.facets.length,corners:g.corners.length,externalModules:g.modules.length,csMin:g.csMin,csMax:g.csMax,rcsMin:g.rcsMin,rcsMax:g.rcsMax},run:runSignatureGeometrySelfTest(),benchmark:signatureGeometryBenchmark(design,5)};};
   window.__SPACEFRAME_COMBAT_OPT_TEST__=()=>({version:'1.31.17',model:'hybrid-grid-candidate-index+fragment-group-shared-cell-cache+internal-entry-continuity+frame-batched-pipe-refresh',cellSub:4,smallSetFallback:28,run:runCombatCollisionOptimizationSelfTest(),benchmark:combatCollisionCandidateBenchmark(design,1600),synthetic:combatCollisionSyntheticBenchmark(2400,180,120),runtime:battle?{time:battle.time,projectiles:projectiles.length,playerTraces:battle.player?.combatTraces?.length||0,enemyTraces:battle.enemies?.reduce((a,q)=>a+(q.combatTraces?.length||0),0)||0,lastPlayerTrace:battle.player?.combatTraces?.[0]?.stats||null,lastEnemyTrace:battle.enemies?.find(q=>q.combatTraces?.length)?.combatTraces?.[0]?.stats||null}:null});
   window.__SPACEFRAME_SHIELD_TEST__=()=>{const ammo=AMMUNITION.tungstenSabot,state={modelId:'kineticPenetrator',ammo,massKg:ammo.penetratorMassKg,speedMps:ammo.muzzleVelocityMps,integrity:1,yawRad:0,deformation:0,penetrationRhaMm:ammo.referencePenetrationRhaMm,energyMJ:ammo.referenceEnergyMJ},profiles={};for(const size of ['S1','S2','S3']){const p=SHIELD_SIZE_CLASSES[size],interaction=shieldKineticInteractionState(state,{rigidity:p.rigidity},1,1,1,p.throughputMJPerModule,0,p.rigidity),post=shieldKineticPostLeakState(state,state.energyMJ*(1-interaction.absorbFraction),interaction);const thresholdMJ=shieldHardeningThresholdMJ({rigidity:p.rigidity},p.throughputMJPerModule,1,1,p.rigidity),costMultiplier=shieldHardeningCostMultiplier(state.energyMJ,thresholdMJ);profiles[size]={throughputMJ:p.throughputMJPerModule,rigidity:p.rigidity,leakChance:interaction.leakChance,absorbFraction:interaction.absorbFraction,postLeakSpeedMps:post.speedMps,postLeakPenetrationRhaMm:post.penetrationRhaMm,piercingStress:interaction.piercingStress,hardeningThresholdMJ:thresholdMJ,stoppedStorageCostMJ:state.energyMJ*costMultiplier*STANDARD_SHIELD.kineticStorageCostScale,leakStorageCostMJ:state.energyMJ*interaction.absorbFraction*costMultiplier*STANDARD_SHIELD.kineticStorageCostScale};}return {version:'1.31.17',model:'kinetic-shield-v1.3-global-collapse-restart-lock',recoveryThermal:runShieldRecoveryThermalSelfTest(),ammo:{id:ammo.id,caliberMm:ammo.caliberMm,penetratorDiameterMm:ammo.penetratorDiameterMm,penetratorLengthMm:ammo.penetratorLengthMm,penetratorMassKg:ammo.penetratorMassKg,energyMJ:ammo.referenceEnergyMJ},profiles,sequences:{S3S2:shieldKineticNominalSequence(state,['S3','S2']),S3S2S1:shieldKineticNominalSequence(state,['S3','S2','S1']),S2S1:shieldKineticNominalSequence(state,['S2','S1'])},monteCarlo:{S1:shieldKineticMonteCarlo(['S1'],12000,0x51a1),S2:shieldKineticMonteCarlo(['S2'],12000,0x52a2),S3:shieldKineticMonteCarlo(['S3'],12000,0x53a3),S3S2:shieldKineticMonteCarlo(['S3','S2'],18000,0x5320)},run:runShieldKineticInteractionSelfTest};};
   window.__SPACEFRAME_STRUCTURE_TEST__=()=>({version:'1.31.17',activeTool,activeToolGroup,family:structuralToolFamily(),wallEraseDraft:wallEraseDraft?{kind:wallEraseDraft.kind,x:wallEraseDraft.x,y:wallEraseDraft.y}:null,run:runStructuralToolModeSelfTest});
@@ -6025,9 +6443,9 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
   window.__SPACEFRAME_REGISTRY_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),registered=Object.keys(MODULE_TYPE_REGISTRY),expected=[...MODULE_INSTALL_TYPES];check('registry-keys',expected.every(id=>registered.includes(id))&&registered.every(id=>expected.includes(id)),{registered,expected});for(const id of expected){const def=moduleTypeDefinition(id),selected=selectedModuleProfile(id),foot=moduleFootprintSub(id),power=selectedModulePowerProfile(id);check(`definition-${id}`,!!def&&def.id===id);check(`profile-${id}`,!!selected&&Number.isFinite(Number(selected.mass))&&Number.isFinite(Number(selected.hp)),{profileId:selected?.id||null});check(`footprint-${id}`,foot.sw>0&&foot.sh>0,{foot});check(`capabilities-${id}`,Array.isArray(def?.capabilities));if(id!=='reactor')check(`power-${id}`,!!power&&Number.isFinite(power.idleMW)&&Number.isFinite(power.maxMW),{power});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),before=d.modules.map(m=>({type:m.type,sx:m.sx,sy:m.sy,sw:m.sw,sh:m.sh,mass:moduleMassTonnes(m),hp:m.maxHp,power:modulePowerProfile(m)})),after=round.modules.map(m=>({type:m.type,sx:m.sx,sy:m.sy,sw:m.sw,sh:m.sh,mass:moduleMassTonnes(m),hp:m.maxHp,power:modulePowerProfile(m)}));check('default-roundtrip',JSON.stringify(before)===JSON.stringify(after),{beforeCount:before.length,afterCount:after.length});const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),single=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),twin=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'});for(const [name,m] of [['empty',empty],['single',single],['twin',twin]]){const p=gunProfileForModule(m);check(`turret-${name}-mass`,Math.abs(moduleMassTonnes(m)-p.mass)<1e-9,{actual:moduleMassTonnes(m),expected:p.mass});check(`turret-${name}-hp`,Math.abs(m.maxHp-p.hp)<1e-9,{actual:m.maxHp,expected:p.hp});check(`turret-${name}-power`,JSON.stringify(modulePowerProfile(m))===JSON.stringify(powerProfileFromResolvedProfile(p,'gun')),{actual:modulePowerProfile(m)});}check('stale-gun-footprint-removed',typeof MODULE_FOOTPRINTS==='undefined');check('legacy-gun-power-removed',!Object.prototype.hasOwnProperty.call(POWER_PROFILES,'gun'));check('legacy-heatsink-power-removed',!Object.prototype.hasOwnProperty.call(POWER_PROFILES,'heatsink'));const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-type-registry-foundation-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,registry:MODULE_TYPE_REGISTRY};};
   window.__SPACEFRAME_SYSTEM_ADAPTER_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),make=(type,extras={})=>makeModule(type,0,0,...(()=>{const f=moduleFootprintSub(type);return [f.sw,f.sh];})(),extras),cannon=make('gun',{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=make('gun',{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-energy-repeater'}),sink=make('heatsink',{heatsinkProfileId:'heatsink-s3'}),radiator=make('heatsink',{heatsinkProfileId:'radiator-s3'}),dump=make('heatsink',{heatsinkProfileId:'heatdump-s3'});for(const [name,m,thermal,reaction,exposure,factor,role,destruction] of [['cannon',cannon,'chemicalGun','chemicalGun','elevated',1.35,'gun',null],['repeater',repeater,'energyGun','energyGun','elevated',1.35,'gun',null],['sink',sink,'heatsink','sink','internal',.92,'heatsink','heatSinkStoredRelease'],['radiator',radiator,'heatsink','radiator','elevated',.92,'radiator',null],['dump',dump,'heatsink','dump','elevated',.92,'heatdump',null]]){check(`${name}-thermal`,moduleThermalProfileKey(m)===thermal,{actual:moduleThermalProfileKey(m),expected:thermal});check(`${name}-reaction`,moduleThermalReactionKey(m)===reaction,{actual:moduleThermalReactionKey(m),expected:reaction});check(`${name}-radar`,moduleRadarExposureClass(m)===exposure&&Math.abs(moduleRadarFactor(m)-factor)<1e-9,{class:moduleRadarExposureClass(m),factor:moduleRadarFactor(m)});check(`${name}-sector`,(moduleSectorRole(m)?.key||null)===(role||null),{role:moduleSectorRole(m)});check(`${name}-destruction`,moduleDestructionHookId(m)===(destruction||null),{hook:moduleDestructionHookId(m)});}const singletonExpect={reactor:['reactor','reactor','internal',.5,'reactor','reactorContainmentBreach'],engine:['engine','engine','surface',1.1,'engine',null],ir:['ir','sensor','surface',1.28,null,null],eo:['eo','sensor','surface',1.42,null,null],fcs:['fcs','sensor','internal',.7,'fcs',null],ammo:['ammo','ammo','internal',.42,'ammo','ammoMagazineExplosion'],shield:['shield','shield','internal',.72,'shield',null]};for(const [type,expected] of Object.entries(singletonExpect)){const extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:{},m=make(type,extras),[thermal,reaction,exposure,factor,role,destruction]=expected;check(`${type}-adapters`,moduleThermalProfileKey(m)===thermal&&moduleThermalReactionKey(m)===reaction&&moduleRadarExposureClass(m)===exposure&&Math.abs(moduleRadarFactor(m)-factor)<1e-9&&(moduleSectorRole(m)?.key||null)===(role||null)&&moduleDestructionHookId(m)===(destruction||null),{thermal:moduleThermalProfileKey(m),reaction:moduleThermalReactionKey(m),exposure:moduleRadarExposureClass(m),factor:moduleRadarFactor(m),role:moduleSectorRole(m),destruction:moduleDestructionHookId(m)});}const onlyCannon={design:{modules:[cannon]}},onlyRepeater={design:{modules:[repeater]}},mixed={design:{modules:[cannon,repeater]}};check('preferred-range-cannon',Math.abs(preferredCombatRange(onlyCannon)-5600)<1e-9,{actual:preferredCombatRange(onlyCannon)});check('preferred-range-repeater',Math.abs(preferredCombatRange(onlyRepeater)-2300)<1e-9,{actual:preferredCombatRange(onlyRepeater)});check('preferred-range-mixed',Math.abs(preferredCombatRange(mixed)-4300)<1e-9,{actual:preferredCombatRange(mixed)});check('legacy-radar-table-removed',typeof RADAR_MODULE_FACTORS==='undefined');check('sector-sensor-capability',isSectorSensorModule(make('ir'))&&isSectorSensorModule(make('eo'))&&!isSectorSensorModule(make('fcs')));const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-system-adapter-migration-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
-  window.__SPACEFRAME_REG_C_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),moduleTypes=Object.keys(MODULE_TYPE_REGISTRY),uiTypes=Object.keys(MODULE_UI_REGISTRY),expectedBasic=['hull','armor','bulkhead','reactor','engine','gun','ammo','shield'],expectedAdvanced=['ir','eo','esm','fusion','fcs','heatsink'];check('ui-registry-covers-module-types',moduleTypes.every(id=>uiTypes.includes(id))&&uiTypes.every(id=>moduleTypes.includes(id)),{moduleTypes,uiTypes});check('tool-groups-generated',JSON.stringify(TOOL_GROUPS.basic)===JSON.stringify(expectedBasic)&&JSON.stringify(TOOL_GROUPS.advanced)===JSON.stringify(expectedAdvanced),{actual:TOOL_GROUPS});for(const id of moduleTypes){const ui=moduleUiDefinition(id);check(`tool-ui-${id}`,!!ui&&ui.id===id&&!!ui.icon&&!!ui.toolLabel,{ui});const cat=moduleCatalogForTool(id),expectedCatalog=id!=='ammo';check(`catalog-contract-${id}`,expectedCatalog?!!cat:!cat,{catalog:cat?.title||null});if(cat){const profiles=moduleCatalogProfiles(id),selected=selectedModuleCatalogId(id);check(`catalog-profiles-${id}`,profiles.length>0&&profiles.every(p=>p?.id),{count:profiles.length});check(`catalog-selection-${id}`,profiles.some(p=>p.id===selected),{selected,ids:profiles.map(p=>p.id)});check(`catalog-copy-${id}`,!!cat.currentName()&&typeof cat.currentMeta()==='string'&&!!cat.useLabel,{name:cat.currentName(),meta:cat.currentMeta(),useLabel:cat.useLabel});}}const sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'}),eo=makeModule('eo',0,0,.5,.5);check('registry-info-heatsink',moduleUiInfoRows(sink).some(([k])=>k==='열흡수'),{rows:moduleUiInfoRows(sink)});check('registry-info-eo',moduleUiInfoRows(eo).some(([k])=>k==='LRF 실용거리'),{rows:moduleUiInfoRows(eo)});check('legacy-module-catalog-table-removed',typeof MODULE_CATALOGS==='undefined');const toolbar=[...document.querySelectorAll('#toolbar .tool[data-tool]')].map(x=>x.dataset.tool);check('toolbar-renders-active-registry-group',TOOL_GROUPS[activeToolGroup].every(id=>toolbar.includes(id)),{activeToolGroup,toolbar});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'registry-driven-tool-catalog-info-ui-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,toolGroups:TOOL_GROUPS};};
-  window.__SPACEFRAME_REG_D_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedPowerOrder=['engine','ir','eo','esm','fusion','fcs','shield','gun','ammo','heatsink'];for(const type of types){const ui=moduleUiDefinition(type),visual=moduleVisualDefinition(type);check(`visual-contract-${type}`,!!ui?.visual&&typeof visual.color==='string'&&typeof visual.edge==='string'&&!!visual.badge,{visual});check(`log-label-${type}`,typeof moduleLogLabel(type)==='string'&&moduleLogLabel(type).length>0,{label:moduleLogLabel(type)});check(`description-${type}`,typeof moduleTypeDescription(type)==='string'&&moduleTypeDescription(type).length>0,{description:moduleTypeDescription(type)});}check('power-panel-order',JSON.stringify(MODULE_POWER_PANEL_ORDER)===JSON.stringify(expectedPowerOrder),{actual:MODULE_POWER_PANEL_ORDER});for(const type of expectedPowerOrder){const panel=modulePowerPanelDefinition(type);check(`power-panel-${type}`,!!panel&&typeof panel.label==='string'&&panel.label.length>0,{panel});}const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),cannon=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'}),sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'});check('dynamic-badge-empty-turret',moduleDisplayBadge(empty)==='T4',{badge:moduleDisplayBadge(empty)});check('dynamic-badge-cannon',moduleDisplayBadge(cannon)==='C',{badge:moduleDisplayBadge(cannon)});check('dynamic-badge-repeater',moduleDisplayBadge(repeater)==='R',{badge:moduleDisplayBadge(repeater)});check('dynamic-badge-heatsink',moduleDisplayBadge(sink)===heatsinkProfileForModule(sink).badge,{badge:moduleDisplayBadge(sink)});const d=defaultDesign();updatePowerFitting(d);const powerHtml=document.getElementById('fitBreakdown')?.innerHTML||'';for(const type of expectedPowerOrder){const present=(d.modules||[]).some(m=>m.type===type),label=modulePowerPanelDefinition(type).label;check(`power-panel-render-${type}`,present?powerHtml.includes(label):true,{present,label,powerHtml});}const healthy=makeModule('engine',0,0,1,1);check('health-color-uses-display-contract',moduleHealthColor(healthy)===moduleDisplayColor(healthy),{health:moduleHealthColor(healthy),display:moduleDisplayColor(healthy)});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'registry-display-log-power-contract-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,powerOrder:MODULE_POWER_PANEL_ORDER};};
-  window.__SPACEFRAME_REG_E_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedResistance={reactor:18,engine:12,ir:7,eo:7,esm:7,fusion:8,fcs:8,gun:15,ammo:9,shield:12,heatsink:9};for(const type of types){const profile=selectedModuleProfile(type),physical=modulePhysicalContract(type),legacy=TYPES[type]||{};check(`physical-profile-${type}`,!!profile&&physical.profileId===profile.id&&physical.massT>0&&physical.baseHp>0,{physical});check(`physical-resistance-${type}`,Math.abs(physical.resistance-expectedResistance[type])<1e-9,{actual:physical.resistance,expected:expectedResistance[type]});check(`legacy-physical-removed-${type}`,!Object.prototype.hasOwnProperty.call(legacy,'mass')&&!Object.prototype.hasOwnProperty.call(legacy,'hp')&&!Object.prototype.hasOwnProperty.call(legacy,'resist'),{legacy});const f=moduleFootprintSub(type),extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard'}:{},m=makeModule(type,0,0,f.sw,f.sh,extras),resolved=moduleResolvedProfile(m),contract=modulePhysicalContract(m);const expectedMass=resolved.mass*moduleScale(m)+(type==='ammo'?magazineAmmoMassTonnes(m):0);check(`instance-mass-${type}`,Math.abs(moduleMassTonnes(m)-expectedMass)<1e-9,{actual:moduleMassTonnes(m),expected:expectedMass});check(`instance-hp-${type}`,Math.abs(m.maxHp-contract.baseHp*moduleScale(m))<1e-9,{actual:m.maxHp,expected:contract.baseHp*moduleScale(m)});check(`instance-resistance-${type}`,Math.abs(moduleResistance(m)-expectedResistance[type])<1e-9,{actual:moduleResistance(m)});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),signature=design=>design.modules.map(m=>({type:m.type,profile:modulePhysicalContract(m).profileId,mass:moduleMassTonnes(m),hp:m.maxHp,resistance:moduleResistance(m)}));check('physical-roundtrip',JSON.stringify(signature(d))===JSON.stringify(signature(round)),{before:signature(d),after:signature(round)});const all=results.every(q=>q.pass);return {version:'1.31.17',model:'module-physical-contract-single-source-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
+  window.__SPACEFRAME_REG_C_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),moduleTypes=Object.keys(MODULE_TYPE_REGISTRY),uiTypes=Object.keys(MODULE_UI_REGISTRY),expectedBasic=['hull','armor','bulkhead','reactor','engine','gun','ammo','shield'],expectedAdvanced=['ir','eo','radar','esm','fusion','fcs','heatsink'];check('ui-registry-covers-module-types',moduleTypes.every(id=>uiTypes.includes(id))&&uiTypes.every(id=>moduleTypes.includes(id)),{moduleTypes,uiTypes});check('tool-groups-generated',JSON.stringify(TOOL_GROUPS.basic)===JSON.stringify(expectedBasic)&&JSON.stringify(TOOL_GROUPS.advanced)===JSON.stringify(expectedAdvanced),{actual:TOOL_GROUPS});for(const id of moduleTypes){const ui=moduleUiDefinition(id);check(`tool-ui-${id}`,!!ui&&ui.id===id&&!!ui.icon&&!!ui.toolLabel,{ui});const cat=moduleCatalogForTool(id),expectedCatalog=id!=='ammo';check(`catalog-contract-${id}`,expectedCatalog?!!cat:!cat,{catalog:cat?.title||null});if(cat){const profiles=moduleCatalogProfiles(id),selected=selectedModuleCatalogId(id);check(`catalog-profiles-${id}`,profiles.length>0&&profiles.every(p=>p?.id),{count:profiles.length});check(`catalog-selection-${id}`,profiles.some(p=>p.id===selected),{selected,ids:profiles.map(p=>p.id)});check(`catalog-copy-${id}`,!!cat.currentName()&&typeof cat.currentMeta()==='string'&&!!cat.useLabel,{name:cat.currentName(),meta:cat.currentMeta(),useLabel:cat.useLabel});}}const sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'}),eo=makeModule('eo',0,0,.5,.5);check('registry-info-heatsink',moduleUiInfoRows(sink).some(([k])=>k==='열흡수'),{rows:moduleUiInfoRows(sink)});check('registry-info-eo',moduleUiInfoRows(eo).some(([k])=>k==='LRF 실용거리'),{rows:moduleUiInfoRows(eo)});check('legacy-module-catalog-table-removed',typeof MODULE_CATALOGS==='undefined');const toolbar=[...document.querySelectorAll('#toolbar .tool[data-tool]')].map(x=>x.dataset.tool);check('toolbar-renders-active-registry-group',TOOL_GROUPS[activeToolGroup].every(id=>toolbar.includes(id)),{activeToolGroup,toolbar});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'registry-driven-tool-catalog-info-ui-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,toolGroups:TOOL_GROUPS};};
+  window.__SPACEFRAME_REG_D_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedPowerOrder=['engine','ir','eo','esm','radar','fusion','fcs','shield','gun','ammo','heatsink'];for(const type of types){const ui=moduleUiDefinition(type),visual=moduleVisualDefinition(type);check(`visual-contract-${type}`,!!ui?.visual&&typeof visual.color==='string'&&typeof visual.edge==='string'&&!!visual.badge,{visual});check(`log-label-${type}`,typeof moduleLogLabel(type)==='string'&&moduleLogLabel(type).length>0,{label:moduleLogLabel(type)});check(`description-${type}`,typeof moduleTypeDescription(type)==='string'&&moduleTypeDescription(type).length>0,{description:moduleTypeDescription(type)});}check('power-panel-order',JSON.stringify(MODULE_POWER_PANEL_ORDER)===JSON.stringify(expectedPowerOrder),{actual:MODULE_POWER_PANEL_ORDER});for(const type of expectedPowerOrder){const panel=modulePowerPanelDefinition(type);check(`power-panel-${type}`,!!panel&&typeof panel.label==='string'&&panel.label.length>0,{panel});}const empty=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard'}),cannon=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}),repeater=makeModule('gun',0,0,3,3,{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-twin',weaponProfileId:'weapon-s3-energy-repeater'}),sink=makeModule('heatsink',0,0,3,3,{heatsinkProfileId:'heatsink-s3'});check('dynamic-badge-empty-turret',moduleDisplayBadge(empty)==='T4',{badge:moduleDisplayBadge(empty)});check('dynamic-badge-cannon',moduleDisplayBadge(cannon)==='C',{badge:moduleDisplayBadge(cannon)});check('dynamic-badge-repeater',moduleDisplayBadge(repeater)==='R',{badge:moduleDisplayBadge(repeater)});check('dynamic-badge-heatsink',moduleDisplayBadge(sink)===heatsinkProfileForModule(sink).badge,{badge:moduleDisplayBadge(sink)});const d=defaultDesign();updatePowerFitting(d);const powerHtml=document.getElementById('fitBreakdown')?.innerHTML||'';for(const type of expectedPowerOrder){const present=(d.modules||[]).some(m=>m.type===type),label=modulePowerPanelDefinition(type).label;check(`power-panel-render-${type}`,present?powerHtml.includes(label):true,{present,label,powerHtml});}const healthy=makeModule('engine',0,0,1,1);check('health-color-uses-display-contract',moduleHealthColor(healthy)===moduleDisplayColor(healthy),{health:moduleHealthColor(healthy),display:moduleDisplayColor(healthy)});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'registry-display-log-power-contract-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results,powerOrder:MODULE_POWER_PANEL_ORDER};};
+  window.__SPACEFRAME_REG_E_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),expectedResistance={reactor:18,engine:12,ir:7,eo:7,esm:7,radar:9,fusion:8,fcs:8,gun:15,ammo:9,shield:12,heatsink:9};for(const type of types){const profile=selectedModuleProfile(type),physical=modulePhysicalContract(type),legacy=TYPES[type]||{};check(`physical-profile-${type}`,!!profile&&physical.profileId===profile.id&&physical.massT>0&&physical.baseHp>0,{physical});check(`physical-resistance-${type}`,Math.abs(physical.resistance-expectedResistance[type])<1e-9,{actual:physical.resistance,expected:expectedResistance[type]});check(`legacy-physical-removed-${type}`,!Object.prototype.hasOwnProperty.call(legacy,'mass')&&!Object.prototype.hasOwnProperty.call(legacy,'hp')&&!Object.prototype.hasOwnProperty.call(legacy,'resist'),{legacy});const f=moduleFootprintSub(type),extras=type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard'}:{},m=makeModule(type,0,0,f.sw,f.sh,extras),resolved=moduleResolvedProfile(m),contract=modulePhysicalContract(m);const expectedMass=resolved.mass*moduleScale(m)+(type==='ammo'?magazineAmmoMassTonnes(m):0);check(`instance-mass-${type}`,Math.abs(moduleMassTonnes(m)-expectedMass)<1e-9,{actual:moduleMassTonnes(m),expected:expectedMass});check(`instance-hp-${type}`,Math.abs(m.maxHp-contract.baseHp*moduleScale(m))<1e-9,{actual:m.maxHp,expected:contract.baseHp*moduleScale(m)});check(`instance-resistance-${type}`,Math.abs(moduleResistance(m)-expectedResistance[type])<1e-9,{actual:moduleResistance(m)});}const d=defaultDesign(),round=sanitizeDesign(compactDesign(d)),signature=design=>design.modules.map(m=>({type:m.type,profile:modulePhysicalContract(m).profileId,mass:moduleMassTonnes(m),hp:m.maxHp,resistance:moduleResistance(m)}));check('physical-roundtrip',JSON.stringify(signature(d))===JSON.stringify(signature(round)),{before:signature(d),after:signature(round)});const all=results.every(q=>q.pass);return {version:'1.31.28',model:'module-physical-contract-single-source-v1',schema:MODULE_STORAGE_SCHEMA_VERSION,all,passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_REG_F_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),types=Object.keys(MODULE_TYPE_REGISTRY),make=(type,extras={})=>{const f=moduleFootprintSub(type,{type,...extras});return makeModule(type,0,0,f.sw,f.sh,extras);};
     check('schema-contract',MODULE_STORAGE_SCHEMA_VERSION===33,{schema:MODULE_STORAGE_SCHEMA_VERSION});
     for(const type of types){const c=moduleStorageContract(type),m=make(type,type==='shield'?{shieldProfileId:'s3-quadrant'}:type==='heatsink'?{heatsinkProfileId:'heatsink-s3'}:type==='gun'?{turretProfileId:'turret-s4-standard',mountProfileId:'mount-s3-single',weaponProfileId:'weapon-s3-150mm-cannon'}:{}),saved=serializeModule(m);check(`contract-${type}`,!!c&&Array.isArray(c.profileFields)&&Array.isArray(c.stateFields),{contract:c});check(`serialize-${type}`,saved.type===type&&saved.sx===m.sx&&saved.maxHp===m.maxHp,{saved});check(`validation-${type}`,moduleStorageValidationIssues(m).length===0,{issues:moduleStorageValidationIssues(m)});}
@@ -6233,7 +6651,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       // 신호가 강해질수록 방위 부채꼴이 좁아진다 — Sea Power식 스트로브의 핵심.
       const near=(()=>{target.x=1500;return sensorObservation(observer,target);})();
-      const far=(()=>{target.x=40000;return sensorObservation(observer,target);})();
+      const far=(()=>{target.x=200000;return sensorObservation(observer,target);})();
       const nearDeg=near.emBearingHalfRad*180/Math.PI,farDeg=far.emBearingHalfRad*180/Math.PI,capDeg=sensorCoverageProfile('esm').response.bearingHalfMaxDeg;
       check('bearing-narrows-with-signal',nearDeg<farDeg&&near.emReceivedMW>far.emReceivedMW,{nearDeg,farDeg,nearMW:near.emReceivedMW,farMW:far.emReceivedMW});
       // 양쪽이 상한에 붙으면 좁혀지는 게 화면에서 안 보인다. 실제로 벌어지는 범위를 쓰는지 확인한다.
@@ -6268,7 +6686,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       // 신호가 끊기면 분류 신뢰도가 무너진다.
       const beforeLoss=tr.emClassifyQuality;
-      target.x=400000;
+      target.x=1200000;
       for(let i=0;i<40;i++){battle.time+=.05;updateSensorFusionTrack(observer,target,sensorObservation(observer,target),.05,{precision:true});}
       check('classification-decays-on-signal-loss',tr.emClassifyQuality<beforeLoss&&tr.emMemoryS>0,{before:beforeLoss,after:tr.emClassifyQuality,memory:tr.emMemoryS});
 
@@ -6277,7 +6695,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     }catch(error){check('sensor-em-runtime',false,{error:String(error?.stack||error)});}
     battle=oldBattle;
     const all=results.every(q=>q.pass);
-    return {version:'1.31.24',model:'sensor-em-c',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    return {version:'1.31.28',model:'sensor-em-c',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   // EM-D: 보호막 식별. 핵심은 "존재를 EO보다 훨씬 먼 거리에서 안다"는 역전 해소다.
@@ -6438,8 +6856,50 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('wedge-sits-on-measured-bearing',Math.abs(normalizeAngle(wedgeBearing-trueBearing))<.02&&tr.esmAreaMajorM>trueRange*.5,{wedgeBearing,trueBearing,major:tr.esmAreaMajorM});
       const rc=document.createElement('canvas');rc.width=320;rc.height=240;const rctx=rc.getContext('2d'),bw0=battleCanvas.width,bh0=battleCanvas.height;battleCanvas.width=320;battleCanvas.height=240;camera={x:tr.esmAreaCenterX,y:tr.esmAreaCenterY,zoom:.018};drawTacticalEsmArea(rctx,tr,0);const pix=rctx.getImageData(0,0,320,240).data;let painted=0;for(let i=3;i<pix.length;i+=4)if(pix[i])painted++;check('esm-area-renders-as-region',painted>100,{painted});battleCanvas.width=bw0;battleCanvas.height=bh0;camera={...oldCamera};check('range-remains-unknown',tr.rangeKnown===false&&!Number.isFinite(tr.actualDistanceM),{rangeKnown:tr.rangeKnown});const beforeMajor=tr.esmAreaMajorM,beforeMinor=tr.esmAreaMinorM;tr.emOnly=false;for(let i=0;i<20;i++){battle.time+=.1;updateEsmUncertaintyArea(tr,observer,{},.1);}check('lost-signal-area-expands',tr.esmAreaMajorM>beforeMajor&&tr.esmAreaMinorM>beforeMinor&&tr.esmAreaAgeS>0,{beforeMajor,afterMajor:tr.esmAreaMajorM,beforeMinor,afterMinor:tr.esmAreaMinorM,age:tr.esmAreaAgeS});tr.rangeKnown=true;check('precise-fix-hides-area',!esmAreaTrackVisible(tr),{});
       const oldCanvasWidth=battleCanvas.width;battleCanvas.width=1000;camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.enterWorldWidthM*1.12);tacticalViewState.active=false;check('tactical-enter-threshold',tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});camera.zoom=battleCanvas.width/(TACTICAL_SENSOR_CONFIG.exitWorldWidthM*.88);tacticalViewState.active=true;check('tactical-exit-hysteresis',!tacticalViewShouldBeActive(),{worldWidth:battleVisibleWorldWidthM()});battleCanvas.width=oldCanvasWidth;
+      // ── RADAR-S2: 긴 교전 봉투를 화면이 실제로 담아야 한다 ──────────────
+      const slider=document.getElementById('sortieDistance');
+      check('sortie-range-reaches-the-radar-envelope',(()=>{
+        const max=Number(slider?.max)||0;
+        // 레이더가 통상 자세에서 잡는 거리를 슬라이더가 담지 못하면 항상 Pd≈1이라
+        // 탐색이라는 단계 자체가 사라진다.
+        return max>=radarDetectionRangeM(RADAR_CONFIG.refRcsM2,radarProfile().detection.searchBoost);
+      })(),{max:Number(slider?.max),radarM:Math.round(radarDetectionRangeM(RADAR_CONFIG.refRcsM2,radarProfile().detection.searchBoost))});
+      check('camera-can-frame-a-long-range-engagement',(()=>{
+        const w0=battleCanvas.width,h0=battleCanvas.height,b0=battle,v0={...battleView};
+        battleCanvas.width=1280;battleCanvas.height=800;
+        const mkS=(id,x)=>createShip(id,id,cloneDesign(design),x,0,0,'player');
+        battle={player:mkS('camA',-125000),enemies:[Object.assign(mkS('camB',125000),{team:'enemy'})],time:0};battle.player.lockId=null;
+        battleView.offsetX=0;battleView.offsetY=0;battleView.zoomMul=.9;
+        computeCamera();
+        const a=worldToScreen(battle.player.x,0),b=worldToScreen(battle.enemies[0].x,0);
+        const bothVisible=a.x>0&&a.x<1280&&b.x>0&&b.x<1280;
+        battleCanvas.width=w0;battleCanvas.height=h0;battle=b0;Object.assign(battleView,v0);
+        return bothVisible;
+      })(),{});
+      // 레이더 스윕과 접촉이 실제로 그려지는지 — 라벨만 바뀌고 그림이 없으면 거짓말이다.
+      check('radar-sweep-and-contact-render',(()=>{
+        const w0=battleCanvas.width,h0=battleCanvas.height,b0=battle,c0={...camera};
+        battleCanvas.width=360;battleCanvas.height=280;
+        const d=cloneDesign(design),anchor=d.modules.find(m=>m.type==='reactor')||{sx:20,sy:20};
+        addDefaultBoundarySensor(d,'radar','front');
+        const sh=createShip('rv','rv',d,0,0,0,'player');syncPowerSystem(sh);
+        battle={player:sh,enemies:[],time:1};camera={x:0,y:0,zoom:.00002};
+        const paint=(fn)=>{const cv=document.createElement('canvas');cv.width=360;cv.height=280;const cx=cv.getContext('2d');fn(cx);
+          const px=cx.getImageData(0,0,360,280).data;let n=0;for(let i=3;i<px.length;i+=4)if(px[i])n++;return n;};
+        const sweep=paint(cx=>drawTacticalRadarSweep(cx,sh));
+        const contact=paint(cx=>drawTacticalRadarContact(cx,{radarFix:true,radarRangeM:120000,radarTrackClass:'TWS',
+          radarTrackQuality:.7,radarRangeRateMps:-320,estimatedX:0,estimatedY:0,positionUncertaintyM:400},0));
+        battleCanvas.width=w0;battleCanvas.height=h0;battle=b0;camera=c0;
+        return sweep>200&&contact>50;
+      })(),{});
+      check('emcon-hides-the-sweep',(()=>{
+        const d=cloneDesign(design);addDefaultBoundarySensor(d,'radar','front');
+        const sh=createShip('rv2','rv2',d,0,0,0,'player');syncPowerSystem(sh);
+        sh.systems.radarEmitting=false;
+        return radarOperationalFactor(sh)===0;
+      })(),{});
       battle=oldBattle;camera=oldCamera;tacticalViewState=oldTactical;
-    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.26',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    }catch(error){check('tactical-sensor-runtime',false,{error:String(error?.stack||error)});}const all=results.every(q=>q.pass);return {version:'1.31.29',model:'radar-t0a-tactical-sensor-view',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   // ── ESM-GEO 공용 시험 장치 ─────────────────────────────────────────────────
@@ -6481,6 +6941,288 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     ship.x=sx;ship.y=sy;
     return tr;
   }
+  // RADAR-S1: 능동 레이더. 이 게임의 유일한 능동 센서가 무엇을 사고 무엇을 파는지를 고정한다.
+  window.__SPACEFRAME_RADAR_TEST__=()=>{
+    const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,detail});
+    try{
+      const oldBattle=battle;battle={time:1};
+      const c=RADAR_CONFIG,profile=radarProfile();
+      const mkDesign=(opts={})=>{
+        const d=cloneDesign(design),a=d.modules.find(m=>m.type==='reactor')||{sx:SUB_W/2,sy:SUB_H/2};
+        if(!shieldProfileIdsForDesign(d,false)[0]){const id='s3-quadrant',pp=SHIELD_PROFILES[id];d.modules.push(makeModule('shield',a.sx,a.sy,pp.sw*SUBDIV,pp.sh*SUBDIV,{shieldProfileId:id}));}
+        if(!d.modules.some(m=>m.type==='fusion'))d.modules.push(makeModule('fusion',a.sx-6,a.sy,2,2));
+        if(opts.blind)d.modules=d.modules.filter(m=>m.type!=='eo'&&m.type!=='ir');
+        if(opts.esm){addDefaultBoundarySensor(d,'esm','front');addDefaultBoundarySensor(d,'esm','rear');}
+        if(opts.radar)addDefaultBoundarySensor(d,'radar','front');
+        return d;
+      };
+      const mkShip=(id,opts,x=0,y=0,angle=0,team='player')=>{
+        const sh=createShip(id,id,mkDesign(opts),x,y,angle,team);
+        syncShieldSystem(sh,true);syncPowerSystem(sh);return sh;
+      };
+
+      // ── 레이더 방정식 ────────────────────────────────────────────────
+      check('snr-follows-inverse-fourth-power',(()=>{
+        const a=radarSnrLinear(100,50000,1),b=radarSnrLinear(100,100000,1);
+        return Math.abs(a/b-16)<.02; // 거리 2배 → SNR 1/16
+      })(),{a:radarSnrLinear(100,50000,1),b:radarSnrLinear(100,100000,1)});
+      check('snr-linear-in-rcs',Math.abs(radarSnrLinear(200,60000,1)/radarSnrLinear(100,60000,1)-2)<1e-9,{});
+      check('snr-at-reference-is-unity',Math.abs(radarSnrLinear(c.refRcsM2,c.refRangeM,1)-1)<1e-9,{});
+      check('pd-is-half-at-unit-snr',Math.abs(radarDetectionPd(c.refRcsM2,c.refRangeM,1)-.5)<1e-9,{});
+      check('pd-monotonic-in-range',(()=>{const r=[20000,60000,120000,240000].map(R=>radarDetectionPd(100,R,85));
+        return r.every((v,i)=>i===0||v<r[i-1]);})(),{});
+      check('pd-bounded',(()=>{const v=[radarDetectionPd(0,1000,85),radarDetectionPd(1e6,1,85),radarDetectionPd(100,1e9,85)];
+        return v.every(q=>q>=0&&q<=1)&&v[0]===0;})(),{});
+      check('mode-boost-extends-range',(()=>{
+        const s=radarDetectionRangeM(100,profile.detection.searchBoost),t=radarDetectionRangeM(100,profile.detection.trackBoost),
+          stt=radarDetectionRangeM(100,profile.detection.sttBoost);
+        return s<t&&t<stt;
+      })(),{s:radarDetectionRangeM(100,profile.detection.searchBoost),stt:radarDetectionRangeM(100,profile.detection.sttBoost)});
+      check('detection-range-inverts-pd',(()=>{
+        const R=radarDetectionRangeM(250,85);return Math.abs(radarDetectionPd(250,R,85)-.5)<1e-9;
+      })(),{R:radarDetectionRangeM(250,85)});
+      // 사용자 목표: 통상 함선 자세에서 150~200km급
+      check('search-range-lands-in-the-intended-band',(()=>{
+        const R=radarDetectionRangeM(150,profile.detection.searchBoost);
+        return R>140000&&R<230000;
+      })(),{R:Math.round(radarDetectionRangeM(150,profile.detection.searchBoost))});
+
+      // ── 기존 RCS 모델을 소비한다 (새로 만들지 않는다) ─────────────────
+      const target=mkShip('t',{},150000,0,Math.PI,'enemy');
+      check('radar-consumes-the-existing-directional-rcs',(()=>{
+        const obs={x:0,y:0};
+        const nose=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:Math.PI}),
+              beam=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:Math.PI/2});
+        return nose>0&&beam>0&&Math.abs(nose-beam)>1e-6;
+      })(),{});
+      check('aspect-changes-detection-range',(()=>{
+        const obs={x:0,y:0};let lo=Infinity,hi=0;
+        for(let k=0;k<16;k++){
+          const rcs=radarCrossSectionM2(obs,{...target,x:150000,y:0,angle:k*Math.PI/8});
+          const R=radarDetectionRangeM(rcs,profile.detection.searchBoost);lo=Math.min(lo,R);hi=Math.max(hi,R);
+        }
+        return hi>lo*1.25; // 자세에 따라 탐지거리가 유의하게 흔들려야 한다
+      })(),{});
+      check('stealthier-armour-shortens-detection-range',(()=>{
+        const setArmor=(d,material)=>{for(const w of d.walls||[])if(w.kind==='armor'){syncArmorWall(w);w.layers=[{material,thicknessMm:120,gapMm:0}];syncArmorWall(w);}return d;};
+        const obs={x:0,y:0},base=mkDesign({});
+        const ceramic=createShip('c','c',setArmor(cloneDesign(base),'ceramicComposite'),150000,0,0,'enemy');
+        const uranium=createShip('u','u',setArmor(cloneDesign(base),'depletedUranium'),150000,0,0,'enemy');
+        const rc=radarCrossSectionM2(obs,ceramic),ru=radarCrossSectionM2(obs,uranium);
+        return rc<ru&&radarDetectionRangeM(rc,85)<radarDetectionRangeM(ru,85);
+      })(),{});
+
+      // ── 2면 회전식 스캔 기하 ─────────────────────────────────────────
+      check('two-faces-give-240-degrees-instantaneously',(()=>{
+        const f=radarInstantaneousCoverageFrac(profile);
+        return Math.abs(f-(profile.performance.faces*2*profile.performance.faceFieldOfRegardDeg)/360)<1e-9&&Math.abs(f-2/3)<1e-9;
+      })(),{frac:radarInstantaneousCoverageFrac(profile)});
+      check('coverage-is-not-total',radarInstantaneousCoverageFrac(profile)<1,{});
+      check('revisit-is-rotation-over-face-count',Math.abs(radarRevisitPeriodS(profile)-profile.performance.rotationPeriodS/profile.performance.faces)<1e-9,{revisit:radarRevisitPeriodS(profile)});
+      check('faces-are-evenly-spaced',(()=>{
+        const f=radarFaceBearings(profile,0,0,0);
+        return f.length===profile.performance.faces&&Math.abs(Math.abs(normalizeAngle(f[1]-f[0]))-Math.PI)<1e-9;
+      })(),{faces:radarFaceBearings(profile,0,0,0)});
+      check('rotation-advances-with-time',(()=>{
+        const a=radarFaceBearings(profile,0,0,0)[0],b=radarFaceBearings(profile,profile.performance.rotationPeriodS/4,0,0)[0];
+        return Math.abs(Math.abs(normalizeAngle(b-a))-Math.PI/2)<1e-6;
+      })(),{});
+      check('hull-rotation-carries-the-array',(()=>{
+        const a=radarFaceBearings(profile,0,0,0)[0],b=radarFaceBearings(profile,0,0,Math.PI/2)[0];
+        return Math.abs(normalizeAngle(b-a)-Math.PI/2)<1e-9;
+      })(),{});
+      check('bearing-inside-a-face-is-covered',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),cov=radarFaceCoverage(profile,f,f[0]);
+        return !!cov&&cov.offRad<1e-9&&Math.abs(cov.gain-1)<1e-9;
+      })(),{});
+      check('bearing-in-the-blind-wedge-is-not-covered',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),forRad=profile.performance.faceFieldOfRegardDeg*Math.PI/180;
+        return radarFaceCoverage(profile,f,normalizeAngle(f[0]+forRad*1.4))===null;
+      })(),{});
+      check('face-edge-loses-gain',(()=>{
+        const f=radarFaceBearings(profile,0,0,0),forRad=profile.performance.faceFieldOfRegardDeg*Math.PI/180;
+        const edge=radarFaceCoverage(profile,f,normalizeAngle(f[0]+forRad*.95));
+        return edge&&edge.gain<1&&edge.gain>0;
+      })(),{gain:radarFaceCoverage(profile,radarFaceBearings(profile,0,0,0),normalizeAngle(radarFaceBearings(profile,0,0,0)[0]+.95*profile.performance.faceFieldOfRegardDeg*Math.PI/180))?.gain});
+      check('every-bearing-is-swept-within-one-revisit',(()=>{
+        const period=profile.performance.rotationPeriodS,steps=180;
+        for(let b=0;b<24;b++){
+          const bearing=b*Math.PI*2/24;let seen=false;
+          for(let i=0;i<steps&&!seen;i++){
+            const t=i*(period/profile.performance.faces)/steps;
+            if(radarFaceCoverage(profile,radarFaceBearings(profile,t,0,0),bearing))seen=true;
+          }
+          if(!seen)return false;
+        }
+        return true;
+      })(),{});
+      // 탐색은 FOR 전체를 얇게 훑고 STT는 빔을 세워 둔다 — 이 차이가 처리 이득 차이를 만든다.
+      check('mode-duty-orders-search-tws-stt',(()=>{
+        const s=radarModeDuty(profile,'SEARCH'),t=radarModeDuty(profile,'TWS'),u=radarModeDuty(profile,'STT');
+        return s<t&&t<u&&u===1&&Math.abs(s-profile.scan.beamWidthDeg/(2*profile.performance.faceFieldOfRegardDeg))<1e-9;
+      })(),{});
+
+      // ── 모듈 계약 ────────────────────────────────────────────────────
+      const rmod=makeModule('radar',0,0,...(()=>{const f=moduleFootprintSub('radar');return [f.sw,f.sh];})());
+      check('registered-in-all-registries',!!moduleTypeDefinition('radar')&&!!moduleUiDefinition('radar')&&MODULE_INSTALL_TYPES.includes('radar')&&!!SINGLETON_MODULE_PROFILES.radar&&!!sensorCoverageProfile('radar'),{});
+      check('is-the-only-active-sensor',moduleHasCapability(rmod,'activeSensor')&&moduleHasCapability(rmod,'sensor')&&!moduleHasCapability(rmod,'passiveSensor')&&!moduleHasCapability(makeModule('esm',0,0,1,1),'activeSensor'),{});
+      check('needs-hull-exposure-unlike-esm',(()=>{
+        const rp=sensorCoverageProfile('radar'),ep=sensorCoverageProfile('esm');
+        return rp.minExposureFraction>0&&rp.minExposureFraction>ep.minExposureFraction&&rp.occludeHull&&!ep.occludeHull;
+      })(),{});
+      check('is-a-large-radar-return-itself',(()=>{
+        const esm=makeModule('esm',0,0,1,1);
+        return moduleRadarExposureClass(rmod)==='elevated'&&moduleRadarFactor(rmod)>moduleRadarFactor(esm)&&moduleHasCapability(rmod,'externalRadarReturn');
+      })(),{factor:moduleRadarFactor(rmod)});
+      check('draws-far-more-power-than-passive-sensors',(()=>{
+        const r=selectedModulePowerProfile('radar'),e=selectedModulePowerProfile('esm');
+        return r.maxMW>e.maxMW*10;
+      })(),{radar:selectedModulePowerProfile('radar').maxMW});
+      check('narrow-beam-beats-passive-bearing-precision',sensorCoverageProfile('radar').response.bearingHalfMaxDeg<sensorCoverageProfile('esm').response.bearingHalfMaxDeg/4,{});
+
+      // ── 런타임: 탐지·측정·추적 ───────────────────────────────────────
+      const run=(observer,tgt,{seconds=25,dt=1/60,move=null}={})=>{
+        battle={player:observer,enemies:[tgt],time:0};
+        for(let i=0;i<seconds/dt;i++){battle.time+=dt;if(move)move(tgt,battle.time,dt);updateSensorSystems([observer,tgt],dt);}
+        return sensorTrackFor(observer,tgt.id);
+      };
+      // EO/IR을 떼어 레이더 단독 경로가 실제로 실행되게 한다. EO가 보이면 기존 EO
+      // 정밀 경로가 위치를 맡으므로 레이더 극좌표 경로가 통째로 우회된다.
+      const radarShip=()=>mkShip('rs',{radar:true,esm:true,blind:true});
+      const plainTarget=(x,y=0)=>mkShip('pt',{},x,y,Math.PI,'enemy');
+
+      const near=run(radarShip(),plainTarget(90000));
+      check('detects-and-tracks-at-long-range',near.radarDetected===true&&(near.radarTrackQuality||0)>0&&Number.isFinite(near.radarRangeM),{dq:near.radarDetectQuality,tq:near.radarTrackQuality,range:near.radarRangeM});
+      check('range-measurement-is-precise-but-not-exact',(()=>{
+        const err=Math.abs(near.radarRangeM-90000);
+        return err>0&&err<profile.detection.searchRangeNoiseM*1.6;
+      })(),{err:near.radarRangeM-90000});
+      check('reports-its-own-bearing-uncertainty',Number.isFinite(near.radarBearingRad)&&near.radarBearingSigmaRad>0,{sigma:near.radarBearingSigmaRad});
+      check('track-survives-the-rotation-gap',(near.radarCoastS||0)<=RADAR_CONFIG.trackTtlS&&near.radarDetected===true,{coast:near.radarCoastS});
+      const far=run(radarShip(),plainTarget(600000));
+      check('far-contact-is-not-detected',!far.radarDetected&&(far.radarDetectQuality||0)<.12,{dq:far.radarDetectQuality});
+      const noRadar=run(mkShip('nr',{esm:true}),plainTarget(90000));
+      check('ship-without-a-radar-detects-nothing-by-radar',!noRadar.radarDetected&&(noRadar.radarDetectQuality||0)===0,{});
+
+      // 도플러: 우주엔 클러터가 없으므로 접선 기동이 탐지를 막지 못한다. 품질만 떨어진다.
+      check('doppler-quality-follows-radial-rate',(()=>{
+        const a=radarDopplerQuality(0),b=radarDopplerQuality(c.dopplerFullRateMps);
+        return Math.abs(a-c.dopplerQualityFloor)<1e-9&&Math.abs(b-1)<1e-9&&radarDopplerQuality(-c.dopplerFullRateMps)===b;
+      })(),{});
+      check('range-rate-is-signed-closing-speed',(()=>{
+        const o={x:0,y:0,vx:0,vy:0},t={x:1000,y:0,vx:-50,vy:0};
+        return Math.abs(radarRangeRateMps(o,t)+50)<1e-9&&Math.abs(radarRangeRateMps(o,{...t,vx:50})-50)<1e-9;
+      })(),{});
+      check('tangential-motion-has-no-range-rate',(()=>{
+        const o={x:0,y:0,vx:0,vy:0},t={x:1000,y:0,vx:0,vy:400};
+        return Math.abs(radarRangeRateMps(o,t))<1e-9;
+      })(),{});
+      const closing=run(radarShip(),plainTarget(90000),{move:(t)=>{t.vx=-300;t.x+=-300/60;}});
+      // 직선으로 옆으로 흐르면 시간이 지나며 기하가 틀어져 시선방향 성분이 생긴다.
+      // 진짜 접선 기동을 보려면 관측자를 중심으로 원을 그려야 한다.
+      const beaming=run(radarShip(),plainTarget(90000),{move:(t,now)=>{
+        const R=90000,w=300/R;
+        t.x=R*Math.cos(w*now);t.y=R*Math.sin(w*now);
+        t.vx=-R*w*Math.sin(w*now);t.vy=R*w*Math.cos(w*now);
+      }});
+      check('tangential-target-is-still-detected',beaming.radarDetected===true,{dq:beaming.radarDetectQuality});
+      check('tangential-motion-degrades-track-quality',(beaming.radarTrackQuality||0)<(closing.radarTrackQuality||0),{beaming:beaming.radarTrackQuality,closing:closing.radarTrackQuality});
+      check('range-rate-withheld-without-doppler',beaming.radarRangeRateMps===null&&Number.isFinite(closing.radarRangeRateMps),{beaming:beaming.radarRangeRateMps,closing:closing.radarRangeRateMps});
+      // 도플러가 살아 있어야 속도해가 서고, 속도해가 서야 사격이 승인된다.
+      check('good-doppler-authorises-fire',trackFireReady({},closing)===true&&closing.rangeKnown===true,{vq:closing.velocityQuality,rq:closing.rangeQuality,bq:closing.bearingQuality});
+      check('tangential-motion-degrades-the-firing-solution',(beaming.velocityQuality||0)<(closing.velocityQuality||0)&&trackFireReady({},beaming)===false,{beaming:beaming.velocityQuality,closing:closing.velocityQuality});
+
+      // ── EMCON: 켜면 보이고, 보이면 들킨다 ────────────────────────────
+      check('radar-registers-as-an-em-band',EM_BAND_ORDER.includes('radar')&&!!EM_BANDS.radar&&!!esmPowerPrior('radar'),{});
+      const emcon=(()=>{
+        const sh=radarShip();sh.systems.radarEmitting=false;
+        const quiet=shipEmEmission(sh,0);
+        sh.systems.radarEmitting=true;
+        const loud=shipEmEmission(sh,0);
+        return {quiet,loud};
+      })();
+      check('emitting-radar-dominates-the-ship-signature',emcon.loud.bands.radar.totalMW>emcon.quiet.totalMW&&emcon.loud.totalMW>emcon.quiet.totalMW*2,{quiet:emcon.quiet.totalMW,loud:emcon.loud.totalMW});
+      check('emcon-silences-the-radar-band-completely',emcon.quiet.bands.radar.totalMW===0,{});
+      check('emcon-stops-detection-too',(()=>{
+        const sh=radarShip();sh.systems.radarEmitting=false;
+        return radarOperationalFactor(sh)===0&&run(sh,plainTarget(90000)).radarDetected!==true;
+      })(),{});
+      // 편도 전파(ESM)가 왕복 전파(레이더)보다 반드시 멀리 간다 — 이 게임의 EMCON 긴장 전체가 여기서 나온다.
+      check('esm-outranges-the-radar-that-it-hears',(()=>{
+        const sh=radarShip(),tgt=plainTarget(150000);
+        const seesM=radarDetectionRangeM(radarCrossSectionM2(sh,tgt),profile.detection.searchBoost*radarOperationalFactor(sh));
+        const floor=SENSOR_CONFIG.emSignalFloorMW,scale=SENSOR_CONFIG.emRangeScaleM;
+        const heardM=scale*Math.sqrt(Math.max(0,shipEmEmission(sh,0).totalMW/floor-1));
+        return heardM>seesM*1.5;
+      })(),{});
+      check('stt-is-louder-than-search',(()=>{
+        const sh=radarShip();radarSystemState(sh).modeAtS=-1;
+        const search=emContinuousMWByBand(sh).radar;
+        sh.sensorTracks={x:{radarIlluminated:true}};radarSystemState(sh).modeAtS=-1;
+        const stt=emContinuousMWByBand(sh).radar;
+        return stt>search*1.5;
+      })(),{});
+      check('enemy-esm-classifies-the-radar-band',(()=>{
+        const sh=radarShip(),foe=mkShip('foe',{esm:true},150000,0,Math.PI,'enemy');
+        battle={player:sh,enemies:[foe],time:0};
+        for(let i=0;i<60*8;i++){battle.time+=1/60;updateSensorSystems([sh,foe],1/60);}
+        const tr=sensorTrackFor(foe,'rs');
+        return !!tr&&(tr.emBands||[]).some(b=>b.bandId==='radar');
+      })(),{});
+
+      // ── 사격 계약은 그대로 ───────────────────────────────────────────
+      // RADAR-S2: 확립된 레이더 트랙은 LRF와 나란히 '진짜 거리'를 만드는 두 번째 경로다.
+      check('confirmed-radar-track-grants-range-known',near.radarFix===true&&near.rangeKnown===true&&near.passiveBearingOnly===false,{fix:near.radarFix,rangeKnown:near.rangeKnown});
+      // trackFireReady는 무장 정의에서 요구치를 읽는다(호출부에 넘긴 객체가 아니다).
+      // 실제 기본 요구치로 확인한다 — 레이더가 rangeKnown 관문을 통과시켰는지가 핵심이다.
+      const REQ=DEFAULT_WEAPON_TRACK_REQUIREMENTS;
+      check('confirmed-radar-track-passes-the-range-gate',near.rangeKnown===true&&near.bearingQuality>=REQ.bearing&&near.rangeQuality>=REQ.range,{bq:near.bearingQuality,rq:near.rangeQuality,req:REQ});
+      check('radar-source-is-labelled',/RDR|RADAR/.test(near.source||''),{source:near.source});
+      check('radar-only-contact-uses-the-radar-position-path',near.source==='RADAR'&&near.eoBearingOnly===false&&near.eoLrfLocked===false,{source:near.source});
+      // 탐지만으로는 넘어가지 않는다 — 확립되지 않은 접촉은 여전히 거리 미상이다.
+      // 실측 구간: ~130km 이내는 확립, 150~210km는 탐지되지만 확립 안 됨, 230km 이상은 미탐지.
+      const unconfirmed=run(radarShip(),plainTarget(180000));
+      check('unconfirmed-radar-contact-stays-range-unknown',unconfirmed.radarDetected===true&&unconfirmed.radarFix===false&&unconfirmed.rangeKnown===false,{det:unconfirmed.radarDetected,fix:unconfirmed.radarFix,cls:unconfirmed.radarTrackClass,tq:unconfirmed.radarTrackQuality});
+      check('unconfirmed-radar-contact-blocks-auto-fire',trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},unconfirmed)===false,{});
+      // 위치는 실제 좌표가 아니라 레이더가 잰 극좌표에서 나온다.
+      check('fused-position-comes-from-the-radar-measurement',(()=>{
+        const r=Math.hypot(near.estimatedX-0,near.estimatedY-0);
+        return Math.abs(r-near.radarRangeM)<Math.max(60,near.radarRangeSigmaM*3);
+      })(),{fused:Math.hypot(near.estimatedX,near.estimatedY),radar:near.radarRangeM});
+      check('esm-only-contact-still-blocks-auto-fire',(()=>{
+        const esmOnly=run(mkShip('eo',{esm:true}),plainTarget(90000));
+        return esmOnly.rangeKnown===false&&trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},esmOnly)===false;
+      })(),{});
+      // ── EW-S0: 이음매는 존재하되 어떤 계산도 바꾸지 않아야 한다 ──────
+      check('ew-is-declared-but-disabled',EW_CONFIG.enabled===false&&EW_NONE.active===false&&shipEwEmission(radarShip()).active===false,{});
+      check('jamming-state-is-always-none-today',(()=>{
+        const a=radarShip(),b=plainTarget(90000);
+        return radarJammingState(a,b)===EW_NONE&&radarBurnThroughRangeM(radarJammingState(a,b))===null;
+      })(),{});
+      check('jam-rejection-is-exactly-identity',(()=>{
+        for(const [rcs,R,boost] of [[100,60000,1],[250,120000,85],[50,30000,260]]){
+          const withJam=radarDetectionPd(rcs,R,boost,{active:true,noise:1,deception:1});
+          const without=radarDetectionPd(rcs,R,boost,null);
+          if(withJam!==without)return false;              // 비트 단위로 동일해야 한다
+          if(radarJamRejection({active:true,noise:1},R,rcs,boost)!==0)return false;
+        }
+        return true;
+      })(),{});
+      check('observation-and-track-carry-inert-ew-fields',(()=>{
+        const o=radarObservation(radarShip(),plainTarget(90000),'TWS');
+        return 'jam' in o&&o.jamRejection===0&&o.burnThroughM===null
+          &&near.radarJammed===false&&near.radarJamStrength===0&&near.radarBurnThroughM===null;
+      })(),{});
+      check('illumination-slot-exists-for-missiles',(()=>{
+        const dl=profile.datalink;
+        return 'radarIlluminated' in near&&Number.isFinite(dl.maxArh)&&Number.isFinite(dl.maxSarh);
+      })(),{});
+
+      battle=oldBattle;
+    }catch(error){check('radar-runtime',false,{error:String(error?.stack||error)});}
+    const all=results.every(q=>q.pass);
+    return {version:'1.31.29',model:'radar-s2-fcs-and-display',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+  };
   // ESM-GEO A: 함내 다중 ESM 기선 — 주 효과는 방위 정밀도다.
   window.__SPACEFRAME_ESM_BASELINE_TEST__=()=>{
     const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,detail});
@@ -6553,37 +7295,40 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       const one=()=>mkShip([esm('a',0,0)]),beam=()=>mkShip([esm('p',0,-15),esm('s',0,15)]);
       const AHEAD=0,tgt=(bg,d)=>({x:Math.cos(bg)*d,y:Math.sin(bg)*d});
       const c=TACTICAL_SENSOR_CONFIG;
+      // 시험 거리는 EM 전파 스케일 1배에 맞춘다. 스케일을 바꿔도 시험이 재보정되도록
+      // 상수를 못 박지 않는다 — 예전에는 12km가 그 자리였고 지금은 40km다.
+      const R0=SENSOR_CONFIG.emRangeScaleM*1.35,L=R0/4;
 
       // ── 1) 송신출력 prior ─────────────────────────────────────────────
       check('prior-registered-for-every-em-band',EM_BAND_ORDER.every(id=>!!esmPowerPrior(id)&&esmPowerPrior(id).maxMW>esmPowerPrior(id).minMW),{order:EM_BAND_ORDER});
       check('unknown-prior-is-the-widest',EM_BAND_ORDER.every(id=>ESM_POWER_PRIORS.unknown.maxMW/ESM_POWER_PRIORS.unknown.minMW>esmPowerPrior(id).maxMW/esmPowerPrior(id).minMW),{});
-      check('unregistered-emitter-has-no-prior',esmPowerPrior('radar')===null&&esmPowerPrior(undefined)===null,{});
+      check('unregistered-emitter-has-no-prior',esmPowerPrior('lidar')===null&&esmPowerPrior(undefined)===null,{});
       const bandsAt=d=>esmTestObservation(d,0).emBands;
-      const p12=esmPowerPriorForBands(bandsAt(12000),esmTestObservation(12000,0).emReceivedMW,1);
-      const pUnknown=esmPowerPriorForBands([],10,1),pUnclassified=esmPowerPriorForBands(bandsAt(12000),esmTestObservation(12000,0).emReceivedMW,0);
+      const p12=esmPowerPriorForBands(bandsAt(R0),esmTestObservation(R0,0).emReceivedMW,1);
+      const pUnknown=esmPowerPriorForBands([],10,1),pUnclassified=esmPowerPriorForBands(bandsAt(R0),esmTestObservation(R0,0).emReceivedMW,0);
       check('classified-prior-brackets-the-truth',p12.minMW<=ESM_TEST_TOTAL_MW&&p12.maxMW>=ESM_TEST_TOTAL_MW,{prior:[p12.minMW,p12.maxMW],truth:ESM_TEST_TOTAL_MW});
       check('no-bands-falls-back-to-unknown-prior',pUnknown.minMW===ESM_POWER_PRIORS.unknown.minMW&&pUnknown.maxMW===ESM_POWER_PRIORS.unknown.maxMW&&pUnknown.identified===0,{pUnknown});
       check('low-confidence-widens-the-prior',pUnclassified.maxMW/pUnclassified.minMW>p12.maxMW/p12.minMW*8,{poor:pUnclassified.maxMW/pUnclassified.minMW,good:p12.maxMW/p12.minMW});
-      const pMid=esmPowerPriorForBands(bandsAt(12000),esmTestObservation(12000,0).emReceivedMW,.5);
+      const pMid=esmPowerPriorForBands(bandsAt(R0),esmTestObservation(R0,0).emReceivedMW,.5);
       check('prior-width-is-monotonic-in-confidence',pUnclassified.maxMW/pUnclassified.minMW>pMid.maxMW/pMid.minMW&&pMid.maxMW/pMid.minMW>p12.maxMW/p12.minMW,{});
 
       // ── 2) 신호세기 거리추정: 실제 송신출력을 쓰지 않는다 ─────────────
       const sigEst=(d,cls)=>esmSignalRangeEstimate(esmTestObservation(d,0,{cls}),{_esmRangeQuantile:.5,emClassifyQuality:cls});
       check('signal-range-works-without-true-transmit-power',(()=>{
-        const s=sigEst(12000,1);
-        return !!s&&Number.isFinite(s.rangeM)&&s.rangeM>0&&!('emEmittedMW' in esmTestObservation(12000,0));
-      })(),{est:sigEst(12000,1)});
-      check('signal-range-brackets-the-true-distance',(()=>{const s=sigEst(12000,1);return s.minM<=12000&&s.maxM>=12000;})(),{s:sigEst(12000,1)});
+        const s=sigEst(R0,1);
+        return !!s&&Number.isFinite(s.rangeM)&&s.rangeM>0&&!('emEmittedMW' in esmTestObservation(R0,0));
+      })(),{est:sigEst(R0,1)});
+      check('signal-range-brackets-the-true-distance',(()=>{const s=sigEst(R0,1);return s.minM<=R0&&s.maxM>=R0;})(),{s:sigEst(R0,1)});
       check('signal-range-needs-a-received-signal',esmSignalRangeEstimate({emReceivedMW:0,emBands:[]},{})===null,{});
-      check('poor-classification-widens-range-uncertainty',sigEst(12000,0).sigmaM>sigEst(12000,1).sigmaM*2,{poor:sigEst(12000,0).sigmaM,good:sigEst(12000,1).sigmaM});
-      check('signal-range-monotonic-in-distance',(()=>{const a=sigEst(6000,1).rangeM,b=sigEst(12000,1).rangeM,e=sigEst(24000,1).rangeM;return a<b&&b<e;})(),{r:[sigEst(6000,1).rangeM,sigEst(12000,1).rangeM,sigEst(24000,1).rangeM]});
+      check('poor-classification-widens-range-uncertainty',sigEst(R0,0).sigmaM>sigEst(R0,1).sigmaM*2,{poor:sigEst(R0,0).sigmaM,good:sigEst(R0,1).sigmaM});
+      check('signal-range-monotonic-in-distance',(()=>{const a=sigEst(R0/2,1).rangeM,b=sigEst(R0,1).rangeM,e=sigEst(R0*2,1).rangeM;return a<b&&b<e;})(),{r:[sigEst(R0/2,1).rangeM,sigEst(R0,1).rangeM,sigEst(R0*2,1).rangeM]});
       check('power-quantile-moves-the-point-estimate-inside-the-interval',(()=>{
-        const obs=esmTestObservation(12000,0),lo=esmSignalRangeEstimate(obs,{_esmRangeQuantile:0,emClassifyQuality:1}),hi=esmSignalRangeEstimate(obs,{_esmRangeQuantile:1,emClassifyQuality:1});
+        const obs=esmTestObservation(R0,0),lo=esmSignalRangeEstimate(obs,{_esmRangeQuantile:0,emClassifyQuality:1}),hi=esmSignalRangeEstimate(obs,{_esmRangeQuantile:1,emClassifyQuality:1});
         return lo.rangeM<hi.rangeM&&lo.rangeM>=lo.minM&&hi.rangeM<=hi.maxM+1e-6&&Math.abs(lo.sigmaM-hi.sigmaM)<1e-9;
       })(),{});
       // 분류가 안 되면 거리 방향 정보가 사실상 없다 — 쐐기로 남아야 한다.
-      const unclassified=esmTestRun(one(),tgt(AHEAD,12000),{cls:0});
-      const classified=esmTestRun(one(),tgt(AHEAD,12000),{cls:1});
+      const unclassified=esmTestRun(one(),tgt(AHEAD,R0),{cls:0});
+      const classified=esmTestRun(one(),tgt(AHEAD,R0),{cls:1});
       check('unclassified-contact-stays-bearing-only',unclassified.esmAreaRanged===false&&unclassified.esmRangeEstimateM===null,{ranged:unclassified.esmAreaRanged});
       check('classification-turns-signal-strength-into-a-coarse-range',classified.esmAreaRanged===true&&Number.isFinite(classified.esmRangeEstimateM),{ranged:classified.esmAreaRanged,range:classified.esmRangeEstimateM,rel:classified.esmRangeRelSigma});
       check('coarse-range-stays-coarse',classified.esmRangeRelSigma>=c.relRangeSigmaFloor-1e-9&&classified.esmRangeRelSigma<=c.maxRelRangeSigma+1e-9,{rel:classified.esmRangeRelSigma});
@@ -6591,19 +7336,19 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('single-receiver-alone-still-produces-an-area',esmAreaTrackVisible(classified)&&classified.esmAreaMajorM>0&&classified.esmAreaMinorM>0,{});
 
       // ── 3) 관측 이력 ──────────────────────────────────────────────────
-      const moving=esmTestRun(one(),tgt(AHEAD,12000),{drift:{x:0,y:4000}});
+      const moving=esmTestRun(one(),tgt(AHEAD,R0),{drift:{x:0,y:L*1.3}});
       check('history-accumulates-from-real-observations',moving.esmObservations.length>=3&&moving.esmObservations.every(o=>Number.isFinite(o.observerX)&&Number.isFinite(o.observerY)&&Number.isFinite(o.bearingRad)&&Number.isFinite(o.bearingSigmaRad)&&Number.isFinite(o.measuredAtS)),{n:moving.esmObservations.length,first:moving.esmObservations[0]});
       check('history-observer-positions-follow-own-ship',(()=>{const h=moving.esmObservations;return Math.abs(h[h.length-1].observerY-h[0].observerY)>1500;})(),{spread:moving.esmObservations.map(o=>Math.round(o.observerY))});
-      const still=esmTestRun(one(),tgt(AHEAD,12000),{steps:400});
+      const still=esmTestRun(one(),tgt(AHEAD,R0),{steps:400});
       check('stationary-observer-merges-instead-of-piling-up',still.esmObservations.length===1&&still.esmObservations[0].samples>50,{n:still.esmObservations.length,samples:still.esmObservations[0]?.samples});
       check('merged-sigma-never-beats-the-systematic-floor',still.esmObservations[0].bearingSigmaRad>=still.esmObservations[0].bearingSigmaRad*0&&still.esmObservations[0].bearingSigmaRad>=.16*c.bearingSystematicFrac*.999,{sigma:still.esmObservations[0].bearingSigmaRad});
-      const marathon=esmTestRun(one(),tgt(AHEAD,12000),{steps:900,dt:.1,drift:{x:0,y:30000}});
+      const marathon=esmTestRun(one(),tgt(AHEAD,R0),{steps:900,dt:.1,drift:{x:0,y:L*10}});
       check('history-is-bounded-in-long-engagements',marathon.esmObservations.length<=c.tmaHistoryMax,{n:marathon.esmObservations.length,cap:c.tmaHistoryMax});
       // 상한에 걸렸을 때 가장 오래된 끝을 버리면 기선이 사라진다 — 중간을 솎아 양 끝을 지킨다.
-      check('bounded-history-keeps-its-baseline',marathon.esmMotionBaselineM>20000,{perp:marathon.esmMotionBaselineM,n:marathon.esmObservations.length});
-      const aged=esmTestRun(one(),tgt(AHEAD,12000),{steps:900,dt:.5,drift:{x:0,y:30000}});
+      check('bounded-history-keeps-its-baseline',marathon.esmMotionBaselineM>L*6,{perp:marathon.esmMotionBaselineM,n:marathon.esmObservations.length});
+      const aged=esmTestRun(one(),tgt(AHEAD,R0),{steps:900,dt:.5,drift:{x:0,y:L*10}});
       check('age-window-limits-how-far-back-tma-reaches',aged.esmObservations.every(o=>battle.time-o.measuredAtS<=c.tmaHistoryMaxAgeS+1e-6),{n:aged.esmObservations.length});
-      check('stale-observations-are-dropped',(()=>{const tr=esmTestRun(one(),tgt(AHEAD,12000),{steps:20,drift:{x:0,y:3000}});const before=tr.esmObservations.length;battle.time+=c.tmaHistoryMaxAgeS*2;pruneEsmObservations(tr,battle.time);return before>1&&tr.esmObservations.length===0;})(),{});
+      check('stale-observations-are-dropped',(()=>{const tr=esmTestRun(one(),tgt(AHEAD,R0),{steps:20,drift:{x:0,y:L}});const before=tr.esmObservations.length;battle.time+=c.tmaHistoryMaxAgeS*2;pruneEsmObservations(tr,battle.time);return before>1&&tr.esmObservations.length===0;})(),{});
       check('no-signal-records-no-observation',(()=>{
         const tr=esmTestTrack(),ship=one();const n0=tr.esmObservations.length;
         for(let i=0;i<40;i++){battle.time+=.25;ship.y+=200;updateEsmUncertaintyArea(tr,ship,{emDetectQuality:0,emQuality:0,bearing:0},.25);}
@@ -6611,46 +7356,46 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       })(),{});
 
       // ── 4) TMA: 기하에 따라 성능이 갈린다 ─────────────────────────────
-      const crossLeg=esmTestRun(one(),tgt(AHEAD,12000),{drift:{x:0,y:4000}});
-      const straightIn=esmTestRun(one(),tgt(AHEAD,12000),{drift:{x:4000,y:0}});
+      const crossLeg=esmTestRun(one(),tgt(AHEAD,R0),{drift:{x:0,y:L*2.4}});
+      const straightIn=esmTestRun(one(),tgt(AHEAD,R0),{drift:{x:L*1.3,y:0}});
       check('beam-manoeuvre-converges-the-range',crossLeg.esmAreaRanged===true&&crossLeg.esmRangeRelSigma<straightIn.esmRangeRelSigma,{cross:crossLeg.esmRangeRelSigma,straight:straightIn.esmRangeRelSigma});
       check('beam-manoeuvre-shrinks-the-major-axis',crossLeg.esmAreaMajorM<straightIn.esmAreaMajorM*.6,{cross:crossLeg.esmAreaMajorM,straight:straightIn.esmAreaMajorM});
-      check('straight-run-in-builds-no-tma-baseline',straightIn.esmMotionBaselineM<1&&crossLeg.esmMotionBaselineM>3000,{straight:straightIn.esmMotionBaselineM,cross:crossLeg.esmMotionBaselineM});
+      check('straight-run-in-builds-no-tma-baseline',straightIn.esmMotionBaselineM<1&&crossLeg.esmMotionBaselineM>L,{straight:straightIn.esmMotionBaselineM,cross:crossLeg.esmMotionBaselineM});
       check('tma-quality-reflects-geometry',crossLeg.esmTmaQuality>straightIn.esmTmaQuality,{cross:crossLeg.esmTmaQuality,straight:straightIn.esmTmaQuality});
       check('tma-reports-a-full-solution',Number.isFinite(crossLeg.esmTmaMajorSigmaM)&&Number.isFinite(crossLeg.esmTmaMinorSigmaM)&&Number.isFinite(crossLeg.esmTmaMajorAxisRad)&&crossLeg.esmTmaMajorSigmaM>=crossLeg.esmTmaMinorSigmaM&&crossLeg.esmTmaCount>=c.tmaMinObservations,{major:crossLeg.esmTmaMajorSigmaM,minor:crossLeg.esmTmaMinorSigmaM,count:crossLeg.esmTmaCount});
       check('longer-beam-leg-beats-a-shorter-one',(()=>{
-        const shortLeg=esmTestRun(one(),tgt(AHEAD,12000),{drift:{x:0,y:600}}),longLeg=esmTestRun(one(),tgt(AHEAD,12000),{drift:{x:0,y:6000}});
+        const shortLeg=esmTestRun(one(),tgt(AHEAD,R0),{drift:{x:0,y:L*.2}}),longLeg=esmTestRun(one(),tgt(AHEAD,R0),{drift:{x:0,y:L*2}});
         return longLeg.esmRangeRelSigma<=shortLeg.esmRangeRelSigma;
       })(),{});
       // TMA만으로도 거리가 나온다 — 분류가 안 되어 신호세기 증거가 없을 때가 시금석이다.
-      const tmaOnly=esmTestRun(beam(),tgt(AHEAD,12000),{cls:0,drift:{x:0,y:5000}});
+      const tmaOnly=esmTestRun(beam(),tgt(AHEAD,R0),{cls:0,drift:{x:0,y:L*1.6}});
       check('tma-alone-can-range-an-unclassified-emitter',tmaOnly.esmAreaRanged===true,{ranged:tmaOnly.esmAreaRanged,rel:tmaOnly.esmRangeRelSigma,perp:tmaOnly.esmMotionBaselineM});
       check('tma-solution-lands-near-the-true-emitter',(()=>{
-        const t=tgt(AHEAD,12000),err=Math.hypot(tmaOnly.esmAreaCenterX-t.x,tmaOnly.esmAreaCenterY-t.y);
-        return err<12000*.35;
-      })(),{err:Math.hypot(tmaOnly.esmAreaCenterX-12000,tmaOnly.esmAreaCenterY)});
+        const t=tgt(AHEAD,R0),err=Math.hypot(tmaOnly.esmAreaCenterX-t.x,tmaOnly.esmAreaCenterY-t.y);
+        return err<R0*.35;
+      })(),{err:Math.hypot(tmaOnly.esmAreaCenterX-R0,tmaOnly.esmAreaCenterY)});
       check('two-observations-are-enough-for-a-crossing-fix',(()=>{
         const info=esmTmaInformation([
-          {observerX:0,observerY:-3000,bearingRad:Math.atan2(3000,12000),bearingSigmaRad:.01,measuredAtS:0,samples:1},
-          {observerX:0,observerY:3000,bearingRad:Math.atan2(-3000,12000),bearingSigmaRad:.01,measuredAtS:1,samples:1}],1,12000,0);
-        const sol=esmTmaSolution(info,12000,0);
-        return sol&&Math.abs(sol.x-12000)<600&&Math.abs(sol.y)<600;
+          {observerX:0,observerY:-L,bearingRad:Math.atan2(L,R0),bearingSigmaRad:.01,measuredAtS:0,samples:1},
+          {observerX:0,observerY:L,bearingRad:Math.atan2(-L,R0),bearingSigmaRad:.01,measuredAtS:1,samples:1}],1,R0,0);
+        const sol=esmTmaSolution(info,R0,0);
+        return sol&&Math.abs(sol.x-R0)<R0*.05&&Math.abs(sol.y)<R0*.05;
       })(),{});
       check('parallel-observations-give-no-crossing-fix',(()=>{
         const info=esmTmaInformation([
           {observerX:0,observerY:0,bearingRad:0,bearingSigmaRad:.01,measuredAtS:0,samples:1},
-          {observerX:4000,observerY:0,bearingRad:0,bearingSigmaRad:.01,measuredAtS:1,samples:1}],1,12000,0);
-        const sol=esmTmaSolution(info,12000,0);
+          {observerX:L*1.3,observerY:0,bearingRad:0,bearingSigmaRad:.01,measuredAtS:1,samples:1}],1,R0,0);
+        const sol=esmTmaSolution(info,R0,0);
         return sol&&sol.majorSigmaM>c.esmAreaMaxRadiusM;
       })(),{});
-      check('single-observation-yields-no-tma',esmTmaInformation([{observerX:0,observerY:0,bearingRad:0,bearingSigmaRad:.01,measuredAtS:0,samples:1}],1,12000,0)===null&&esmTmaSolution(null,0,0)===null,{});
+      check('single-observation-yields-no-tma',esmTmaInformation([{observerX:0,observerY:0,bearingRad:0,bearingSigmaRad:.01,measuredAtS:0,samples:1}],1,R0,0)===null&&esmTmaSolution(null,0,0)===null,{});
 
       // ── 5) 세 증거가 역할을 나눈다 ────────────────────────────────────
       // bearing → minor, signal/TMA → major. 각각을 끄고 어느 축이 움직이는지 본다.
-      const soloSignal=esmTestRun(one(),tgt(AHEAD,12000),{cls:1});
-      const pairSignal=esmTestRun(beam(),tgt(AHEAD,12000),{cls:1});
+      const soloSignal=esmTestRun(one(),tgt(AHEAD,R0),{cls:1});
+      const pairSignal=esmTestRun(beam(),tgt(AHEAD,R0),{cls:1});
       check('bearing-evidence-owns-the-minor-axis',pairSignal.esmAreaMinorM<soloSignal.esmAreaMinorM*.35&&Math.abs(pairSignal.esmAreaMajorM-soloSignal.esmAreaMajorM)<soloSignal.esmAreaMajorM*.35,{pairMinor:pairSignal.esmAreaMinorM,soloMinor:soloSignal.esmAreaMinorM,pairMajor:pairSignal.esmAreaMajorM,soloMajor:soloSignal.esmAreaMajorM});
-      const pairTma=esmTestRun(beam(),tgt(AHEAD,12000),{cls:1,drift:{x:0,y:5000}});
+      const pairTma=esmTestRun(beam(),tgt(AHEAD,R0),{cls:1,drift:{x:0,y:L*1.6}});
       check('tma-evidence-owns-the-major-axis',pairTma.esmAreaMajorM<pairSignal.esmAreaMajorM*.6,{withTma:pairTma.esmAreaMajorM,without:pairSignal.esmAreaMajorM});
       // 발전 과정: 쐐기 → 신호세기로 조금 좁아짐 → 기선으로 가늘어짐 → TMA로 짧아짐
       const stage0=unclassified,stage1=soloSignal,stage2=pairSignal,stage3=pairTma;
@@ -6663,30 +7408,34 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       // ── 6) 추정 품질: 실제 표적은 기준값으로만 쓴다 ───────────────────
       check('converged-estimate-is-statistically-sound',(()=>{
-        const t=tgt(AHEAD,12000);let inside=0,total=0,sumErr=0;
+        const t=tgt(AHEAD,R0);let inside=0,total=0,sumErr=0;
         for(let k=0;k<24;k++){
           const tr=esmTestTrack({_esmRangeQuantile:k/23,_esmBearingBiasFrac:(k%7)/3-1,emClassifyQuality:1});
-          esmTestRun(beam(),t,{cls:1,drift:{x:0,y:5000},track:tr});
+          esmTestRun(beam(),t,{cls:1,drift:{x:0,y:L*1.6},track:tr});
           total++;sumErr+=Math.hypot(tr.esmAreaCenterX-t.x,tr.esmAreaCenterY-t.y);
           if(esmAreaContainsPoint(tr,t.x,t.y))inside++;
         }
         // 확률 영역이므로 전부 포함될 필요는 없다. 다만 대다수는 품어야 쓸모가 있다.
         return inside>=total*.6&&sumErr/total<12000*.3;
       })(),{});
-      check('estimate-is-not-snapped-to-the-true-position',(()=>{
-        const t=tgt(AHEAD,12000);let exact=0;
+      // 측정 잡음을 꺼 두면 방위선이 전부 참값을 정확히 지나므로 최소제곱이 진짜 좌표로
+      // 수렴하는 것이 오히려 정상이다. 이 단언은 잡음을 켠 상태에서만 의미가 있다 —
+      // 실제 계약은 "확률적 추정이지 고정해가 아니다"이다.
+      check('estimate-is-a-probabilistic-fix-not-a-snap',(()=>{
+        const t=tgt(AHEAD,R0),errs=[];
         for(let k=0;k<8;k++){
-          const tr=esmTestTrack({_esmRangeQuantile:k/7,emClassifyQuality:1});
-          esmTestRun(beam(),t,{cls:1,drift:{x:0,y:5000},track:tr});
-          if(Math.hypot(tr.esmAreaCenterX-t.x,tr.esmAreaCenterY-t.y)<1)exact++;
+          const tr=esmTestTrack({_esmRangeQuantile:k/7,emClassifyQuality:1,_esmBearingBiasFrac:(k%5)/2-1});
+          esmTestRun(beam(),t,{cls:1,drift:{x:0,y:L*1.6},track:tr,noise:true});
+          errs.push(Math.hypot(tr.esmAreaCenterX-t.x,tr.esmAreaCenterY-t.y));
         }
-        return exact===0;
+        const mean=errs.reduce((a,b)=>a+b,0)/errs.length;
+        return errs.every(e=>e>.5)&&mean>2&&Math.max(...errs)-Math.min(...errs)>.1;
       })(),{});
       // 같은 관측을 받으면 표적이 어디에 있든 같은 추정이 나와야 한다 — 진짜 좌표가 새어들지 않는다는 뜻이다.
       check('runtime-estimate-depends-only-on-measurements',(()=>{
         const mk=()=>esmTestTrack({emClassifyQuality:1});
         const drive=tr=>{const ship=one();for(let i=0;i<60;i++){battle.time+=.25;ship.y=i*80;tr._esmBearingJitter=0;
-          updateEsmUncertaintyArea(tr,ship,esmTestObservation(12000,Math.atan2(-ship.y,12000),{cls:1}),.25);}return tr;};
+          updateEsmUncertaintyArea(tr,ship,esmTestObservation(R0,Math.atan2(-ship.y,12000),{cls:1}),.25);}return tr;};
         const a=drive(mk()),b=drive(mk());
         return Math.abs(a.esmAreaCenterX-b.esmAreaCenterX)<1e-6&&Math.abs(a.esmAreaCenterY-b.esmAreaCenterY)<1e-6&&Math.abs(a.esmAreaMajorM-b.esmAreaMajorM)<1e-6;
       })(),{});
@@ -6694,8 +7443,8 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       // ── 7) 신호 소실과 재획득 ─────────────────────────────────────────
       const lost=(()=>{
-        const ship=beam(),t=tgt(AHEAD,12000),tr=esmTestTrack({emClassifyQuality:1});
-        esmTestRun(ship,t,{cls:1,drift:{x:0,y:5000},track:tr});
+        const ship=beam(),t=tgt(AHEAD,R0),tr=esmTestTrack({emClassifyQuality:1});
+        esmTestRun(ship,t,{cls:1,drift:{x:0,y:L*1.6},track:tr});
         const converged={major:tr.esmAreaMajorM,minor:tr.esmAreaMinorM,ranged:tr.esmAreaRanged};
         for(let i=0;i<40;i++){battle.time+=.25;updateEsmUncertaintyArea(tr,ship,{emDetectQuality:0,emQuality:0,bearing:0},.25);}
         const faded={major:tr.esmAreaMajorM,minor:tr.esmAreaMinorM,age:tr.esmAreaAgeS,confidence:tr.esmAreaConfidence};
@@ -6719,7 +7468,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('ellipse-label-names-its-evidence',(()=>{const t=esmAreaRangeLabel(pairTma);return /거리 \d/.test(t)&&/기선 \d+m/.test(t)&&t.includes('TMA')&&t.includes('신호세기');})(),{label:esmAreaRangeLabel(pairTma)});
       check('bearing-precision-never-collapses-to-zero',!/±0\.0°/.test(esmAreaRangeLabel(pairTma))&&!/±0\.0°/.test(esmAreaRangeLabel(unclassified)),{a:esmAreaRangeLabel(pairTma),b:esmAreaRangeLabel(unclassified)});
       // 쐐기도 실제 측정 방위 σ를 반영한다 — 기선이 좋으면 라벨 단위부터 달라진다.
-      const wedgeSolo=esmTestRun(one(),tgt(AHEAD,12000),{cls:0}),wedgePair=esmTestRun(beam(),tgt(AHEAD,12000),{cls:0});
+      const wedgeSolo=esmTestRun(one(),tgt(AHEAD,R0),{cls:0}),wedgePair=esmTestRun(beam(),tgt(AHEAD,R0),{cls:0});
       check('wedge-bearing-follows-the-measured-sigma',wedgePair.esmBearingSigmaRad<wedgeSolo.esmBearingSigmaRad*.02&&/mrad/.test(esmAreaRangeLabel(wedgePair))&&/°/.test(esmAreaRangeLabel(wedgeSolo)),{pair:esmAreaRangeLabel(wedgePair),solo:esmAreaRangeLabel(wedgeSolo)});
       check('both-remain-wedges-without-range-evidence',wedgeSolo.esmAreaRanged===false&&wedgePair.esmAreaRanged===false,{});
       // 그려지는 쐐기의 폭도 따라 좁아져야 한다 — 라벨만 바뀌고 그림이 그대로면 거짓말이 된다.
@@ -6743,7 +7492,7 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
       battle=oldBattle;
     }catch(error){check('esm-geolocation-runtime',false,{error:String(error?.stack||error)});}
-    const all=results.every(q=>q.pass);return {version:'1.31.26',model:'esm-geo-observation-a',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    const all=results.every(q=>q.pass);return {version:'1.31.28',model:'esm-geo-observation-a',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
   window.__SPACEFRAME_SENSOR_EOIR_E1_TEST__=()=>{
@@ -6756,7 +7505,9 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('eo-range-rebalanced',detectionKm<=520&&aspectKm<=80&&hullKm<=30&&moduleKm<=15,{detectionKm,aspectKm,hullKm,moduleKm});
       check('eo-stage-contract',eoIdentificationStageForTrack({eoAngularMrad:.2,eoIdentificationQuality:.5})===1&&eoIdentificationStageForTrack({eoAngularMrad:.8,eoIdentificationQuality:.3})===2&&eoIdentificationStageForTrack({eoAngularMrad:2.1,eoIdentificationQuality:.55})===3&&eoIdentificationStageForTrack({eoAngularMrad:4.0,eoIdentificationQuality:.8})===4,{});
       check('eo-no-internal-render-contract',!drawObservedDiagramInRect.toString().includes("wall.kind")&&!drawObservedShipPartial.toString().includes("bulkhead"),{});
-      check('ir-range-scale-reduced',c.irRangeScaleM===16000,{irRangeScaleM:c.irRangeScaleM});
+      // RADAR-S1에서 수동 탐지 스케일을 함께 올렸다. 고정값을 못 박는 대신 그때 세운
+      // 골격을 못 박는다 — 탐지는 길고, 사격 품질의 거리(EO/LRF)는 여전히 짧다.
+      check('passive-scales-outrange-the-precision-fix',c.irRangeScaleM>c.eoLrfMaxRangeM*2&&c.emRangeScaleM>c.eoLrfMaxRangeM*2,{ir:c.irRangeScaleM,em:c.emRangeScaleM,lrf:c.eoLrfMaxRangeM});
       const fusion=makeModule('fusion',0,0,1,1),ir=makeModule('ir',2,0,.5,.5),reactor=makeModule('reactor',4,0,4,4),d=emptyDesign();d.modules=[fusion,ir,reactor];
       const observer={id:'eoir-observer',team:'player',design:d,x:0,y:0,vx:0,vy:0,angle:0,comX:0,comY:0,powerSystem:{sensorFactor:1,generationMW:100,maxMJ:100,energyMJ:50},sensorTracks:{},fireControlSolutions:{},alive:true};
       const target=createShip('eoir-target','EOIR TARGET',defaultDesign(),60000,0,Math.PI,'enemy');target.vx=35;target.vy=12;
@@ -6772,10 +7523,10 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('range-unknown-fire-hard-gate',trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},tr)===false&&refreshFireControlSolutionState({emOnly:false,rangeKnown:false,ageS:0,maxSolutionAgeS:99,minAutoConfidence:0,targetRadiusM:50,baseTrackingSigmaM:.001,intrinsicSigmaM:.001,distanceM:1000,velocityUncertaintyMps:0,accelerationUncertaintyMps2:0}).fireAuthorized===false,{});
       battle=oldBattle;
     }catch(error){check('sensor-eoir-runtime',false,{error:String(error?.stack||error)});}
-    const all=results.every(q=>q.pass);return {version:'1.31.24',model:'sensor-eoir-e1',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
+    const all=results.every(q=>q.pass);return {version:'1.31.28',model:'sensor-eoir-e1',all,passed:results.filter(q=>q.pass).length,total:results.length,results};
   };
 
-  syncMaterialControlButtons();setupToolbar();loadUiPreferences();{const loaded=loadDesigns();playerDesign=loaded.player;enemyDesignState=loaded.enemy;design=playerDesign;}setDesignSide('player');if(legacyIntegratedTurretsRemoved>0)showToast(`구형 2×2 통합 포탑 ${legacyIntegratedTurretsRemoved}개 제거 · S4 포탑으로 재설치 필요`);else if(legacyThermalPipesRemoved>0)showToast(`구형 열배관 ${legacyThermalPipesRemoved}개 제거 · 새 규격으로 재설치 필요`);else if(trunkWidthMigrationRemoved>0)showToast(`새 0.5m 폭과 충돌한 주배관 ${trunkWidthMigrationRemoved}개 제거 · 재배치 필요`);initDesignHistory();switchScene('build');updateBuildMetrics();updateSignatureOverlayUi();resizeCanvases();addLog('SPACEFRAME GRID PROTO 1.31.27 UI-POLISH-P1 · ESM GEO CLEANUP','info');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  syncMaterialControlButtons();setupToolbar();loadUiPreferences();{const loaded=loadDesigns();playerDesign=loaded.player;enemyDesignState=loaded.enemy;design=playerDesign;}setDesignSide('player');if(legacyIntegratedTurretsRemoved>0)showToast(`구형 2×2 통합 포탑 ${legacyIntegratedTurretsRemoved}개 제거 · S4 포탑으로 재설치 필요`);else if(legacyThermalPipesRemoved>0)showToast(`구형 열배관 ${legacyThermalPipesRemoved}개 제거 · 새 규격으로 재설치 필요`);else if(trunkWidthMigrationRemoved>0)showToast(`새 0.5m 폭과 충돌한 주배관 ${trunkWidthMigrationRemoved}개 제거 · 재배치 필요`);initDesignHistory();switchScene('build');updateBuildMetrics();updateSignatureOverlayUi();resizeCanvases();addLog('SPACEFRAME GRID PROTO 1.31.29 UI-POLISH-P1 · ESM GEO CLEANUP','info');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
 })();
   </script>
 </body>
