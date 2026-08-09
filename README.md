@@ -10,8 +10,8 @@
 
 ## 개발 상태
 
-프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.33.html`의 `<title>`에 표기된
-**1.31.33** 입니다.
+프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.34.html`의 `<title>`에 표기된
+**1.31.34** 입니다.
 
 게임 파일 이름은 `Spaceframe_v<버전>.html` 형식이며 버전이 올라갈 때마다 바뀝니다.
 저장소 최상위에는 항상 이 파일 하나만 존재합니다.
@@ -27,7 +27,7 @@
 ```
 git clone https://github.com/0-FLANDRE-0/Spaceframe.git
 cd Spaceframe
-# Spaceframe_v1.31.33.html 을 브라우저에서 열기
+# Spaceframe_v1.31.34.html 을 브라우저에서 열기
 ```
 
 파일을 더블클릭하거나 브라우저로 끌어다 놓아도 됩니다(`file://` 로 동작합니다).
@@ -48,7 +48,7 @@ cd Spaceframe
 
 게임 로직은 게임 파일 안의 IIFE 하나에 담겨 있어 바깥에서 직접 호출할 수
 없습니다. 대신 페이지에 자체 테스트 하네스가 `window.__SPACEFRAME_*_TEST__`
-형태로 노출되어 있습니다(현재 70개). 브라우저 콘솔에서 다음과 같이 실행합니다.
+형태로 노출되어 있습니다(현재 71개). 브라우저 콘솔에서 다음과 같이 실행합니다.
 
 ```js
 Object.keys(window)
@@ -78,6 +78,16 @@ Object.keys(window)
 - 제품 메타데이터와 Cr 가격을 이용한 순수 건조비/전투 준비가 및 구조·장비·무장·탄약
   비용 분해
 - 자동 저장·되돌리기(`localStorage`)와 최대 20개 설계 보관함(IndexedDB, gzip 지원)
+
+### 세계관과 기업 데이터
+
+- 설계 화면의 `DB`에서 **2592 CE 인류권**의 우주 이동·산업·핵심 연표와 공동 프로젝트를 열람
+- Meridian General Industries(MGI), Aegis Dynamic Systems(ADS), Helix Propulsion Systems(HPS),
+  Novacore Materials(NCM), Valken Heavy Industries(VHI)의 기업사·거점·문화·강점·관계를 수록
+- 다섯 기업의 로고를 단일 HTML 내부 WebP 데이터로 포함해 외부 이미지 파일 없이 표시
+- 카탈로그와 설치 모듈 정보의 제작 기업 표기에서 기업 DB로 바로 이동 가능
+- 현재 기본 완제품·모듈·무장·탄약은 MGI 범용 기준제품으로 연결하며, 원재료·라이너는
+  특정 제조사를 강제하지 않는다
 
 ### 전력과 기동
 
