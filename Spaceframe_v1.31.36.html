@@ -6479,10 +6479,22 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     postureStickiness:.032,hullAimTrimMaxDeg:20,orbitSafety:.68
   });
   const UNIVERSAL_AI_NEUTRAL_DOCTRINE=Object.freeze({id:'general-purpose',offense:1,survival:1,control:1,endurance:1,information:1,aggression:1,formation:1});
+  // PERF 위상 분산: 갱신 주기(Hz)는 그대로 두고 '어느 프레임에 도는지'만 어긋나게 한다.
+  // dynamic과 world는 주기가 같아(둘 다 10Hz) 위상을 주지 않으면 영원히 같은 프레임에 붙고,
+  // planner는 0.5초마다 거기에 겹친다. 게다가 모든 함선의 타이머가 전투 시작 때 함께 0이라
+  // 함선끼리도 겹친다 — 실측상 AI가 도는 프레임의 83%가 4호출 이상 동시였다.
+  // 누산기는 발화 때 %= 로 감기므로 여기서 준 시드 위상이 이후에도 그대로 유지된다.
+  const AI_CORE_TIMER_PHASE=Object.freeze({dynamic:0,world:.5,planner:.25});
+  let aiCoreSlotSeq=0;
+  // 황금비 저불일치 수열. 함선이 몇 척이 되든 슬롯 위상이 고르게 흩어진다.
+  function aiCoreTimerSeeds(slot){const c=UNIVERSAL_AI_CORE_CONFIG,base=(Math.max(0,slot|0)*.6180339887498949)%1,
+    seed=(key,hz)=>{const period=1/Math.max(.001,hz);return period*(((AI_CORE_TIMER_PHASE[key]+base)%1+1)%1);};
+    return {dynamic:seed('dynamic',c.dynamicHz),world:seed('world',c.worldHz),planner:seed('planner',c.plannerHz)};}
   function ensureUniversalAiCore(ship){
     if(!ship)return null;
-    if(ship.aiCore){ship.aiCore.version=UNIVERSAL_AI_CORE_CONFIG.version;ship.aiCore.mode=UNIVERSAL_AI_CORE_CONFIG.mode;ship.aiCore.doctrine=ship.aiCore.doctrine||{...UNIVERSAL_AI_NEUTRAL_DOCTRINE};ship.aiCore.timers=ship.aiCore.timers||{dynamic:0,world:0,planner:0};ship.aiCore.stats=ship.aiCore.stats||{staticBuilds:0,dynamicUpdates:0,worldUpdates:0,plannerUpdates:0,lastPlannerMs:0};ship.aiCore.control=ship.aiCore.control||{active:false,source:'OBSERVE',reason:'INIT',orbitDir:ship.orbitDir||1};return ship.aiCore;}
-    return ship.aiCore={version:UNIVERSAL_AI_CORE_CONFIG.version,mode:UNIVERSAL_AI_CORE_CONFIG.mode,doctrine:{...UNIVERSAL_AI_NEUTRAL_DOCTRINE},staticModel:null,dynamicModel:null,worldModel:null,planner:null,intent:null,control:{active:false,source:'OBSERVE',reason:'INIT',orbitDir:ship.orbitDir||1},timers:{dynamic:0,world:0,planner:0},stats:{staticBuilds:0,dynamicUpdates:0,worldUpdates:0,plannerUpdates:0,lastPlannerMs:0},lastUpdateAtS:0};
+    if(ship.aiCore){ship.aiCore.version=UNIVERSAL_AI_CORE_CONFIG.version;ship.aiCore.mode=UNIVERSAL_AI_CORE_CONFIG.mode;ship.aiCore.doctrine=ship.aiCore.doctrine||{...UNIVERSAL_AI_NEUTRAL_DOCTRINE};if(!Number.isFinite(ship.aiCore.aiCoreSlot))ship.aiCore.aiCoreSlot=aiCoreSlotSeq++;ship.aiCore.timers=ship.aiCore.timers||aiCoreTimerSeeds(ship.aiCore.aiCoreSlot);ship.aiCore.stats=ship.aiCore.stats||{staticBuilds:0,dynamicUpdates:0,worldUpdates:0,plannerUpdates:0,lastPlannerMs:0};ship.aiCore.control=ship.aiCore.control||{active:false,source:'OBSERVE',reason:'INIT',orbitDir:ship.orbitDir||1};return ship.aiCore;}
+    const slot=aiCoreSlotSeq++;
+    return ship.aiCore={version:UNIVERSAL_AI_CORE_CONFIG.version,mode:UNIVERSAL_AI_CORE_CONFIG.mode,doctrine:{...UNIVERSAL_AI_NEUTRAL_DOCTRINE},staticModel:null,dynamicModel:null,worldModel:null,planner:null,intent:null,control:{active:false,source:'OBSERVE',reason:'INIT',orbitDir:ship.orbitDir||1},aiCoreSlot:slot,timers:aiCoreTimerSeeds(slot),stats:{staticBuilds:0,dynamicUpdates:0,worldUpdates:0,plannerUpdates:0,lastPlannerMs:0},lastUpdateAtS:0};
   }
   function aiCoreAspectSamples(){return Array.from({length:UNIVERSAL_AI_CORE_CONFIG.aspectSamples},(_,i)=>-Math.PI+i*Math.PI*2/UNIVERSAL_AI_CORE_CONFIG.aspectSamples);}
   function aiCoreAngleDeg(a){let d=normalizeAngle(Number(a)||0)*180/Math.PI;if(Math.abs(d)<.05)d=0;return d;}
@@ -8002,6 +8014,35 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   };
 
   // AI-CORE WIP4: 범용 코어가 TRACK에서 실제 Flight Intent를 만들고, 불충분 상태에서는 Legacy로 폴백하는지 검증한다.
+  // PERF 위상 분산 회귀: 갱신 주기(Hz)는 그대로 두고 '어느 프레임에 도는지'만 어긋나게 한다.
+  // 대조군(위상 0)을 같은 하네스 안에서 함께 돌려, 이 테스트가 막고 있는 것이 무엇인지 못 박는다.
+  window.__SPACEFRAME_AI_PHASE_PERF_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),oldBattle=battle;try{
+    const c=UNIVERSAL_AI_CORE_CONFIG,s0=aiCoreTimerSeeds(0),s1=aiCoreTimerSeeds(1),s2=aiCoreTimerSeeds(2);
+    check('same-period-models-are-out-of-phase',c.dynamicHz===c.worldHz&&Math.abs(s0.dynamic-s0.world)>1e-6&&Math.abs(s1.dynamic-s1.world)>1e-6&&Math.abs(s2.dynamic-s2.world)>1e-6,{s0,s1,s2});
+    check('ship-slots-get-distinct-phases',Math.abs(s0.dynamic-s1.dynamic)>1e-6&&Math.abs(s1.dynamic-s2.dynamic)>1e-6&&Math.abs(s0.dynamic-s2.dynamic)>1e-6,{dynamic:[s0.dynamic,s1.dynamic,s2.dynamic]});
+    check('phase-seed-stays-inside-one-period',[s0,s1,s2].every(q=>q.dynamic>=0&&q.dynamic<1/c.dynamicHz&&q.world>=0&&q.world<1/c.worldHz&&q.planner>=0&&q.planner<1/c.plannerHz),{s0,s1,s2});
+    // 두 함선을 실제로 돌려 프레임별 동시발화를 센다. dt가 고정이라 완전히 결정적이다.
+    const dt=1/60,frames=600,snap=q=>{const st=ensureUniversalAiCore(q).stats;return [st.dynamicUpdates||0,st.worldUpdates||0,st.plannerUpdates||0];};
+    const sim=(tag,flatten)=>{
+      const a=createShip('ai-phase-a'+tag,'AI PHASE A',defaultDesign(),0,0,0,'player'),b=createShip('ai-phase-b'+tag,'AI PHASE B',defaultDesign(),5000,0,Math.PI,'enemy');
+      battle={player:a,enemies:[b],time:0};
+      updateUniversalAiCore(a,1);updateUniversalAiCore(b,1);
+      // 대조군: 위상을 전부 0으로 되돌려 개선 이전 상태를 그대로 재현한다.
+      if(flatten)for(const q of [a,b])ensureUniversalAiCore(q).timers={dynamic:0,world:0,planner:0};
+      let pa=snap(a),pb=snap(b);const perFrame=[];
+      for(let i=0;i<frames;i++){battle.time+=dt;updateUniversalAiCore(a,dt);updateUniversalAiCore(b,dt);
+        const na=snap(a),nb=snap(b);let n=0;for(let k=0;k<3;k++)n+=(na[k]-pa[k])+(nb[k]-pb[k]);perFrame.push(n);pa=na;pb=nb;}
+      const hist={};for(const n of perFrame)hist[n]=(hist[n]||0)+1;
+      return {maxCo:Math.max(...perFrame),fired:perFrame.reduce((x,y)=>x+y,0),busy:perFrame.filter(n=>n>0).length,hist};};
+    const stag=sim('-stag',false),flat=sim('-flat',true),secs=frames*dt,expect=2*(c.dynamicHz+c.worldHz+c.plannerHz)*secs;
+    // 계약의 핵심 — 분산은 일을 '줄이는' 게 아니다. 총 발화 수가 이론값과 맞고, 대조군보다 적지 않아야 한다.
+    // (대조군은 모든 타이머가 정확히 0에서 출발해 누산기가 주기 경계에 걸리는 바람에 오히려 몇 번을 흘린다.)
+    check('update-rate-is-not-reduced-by-staggering',Math.abs(stag.fired-expect)<=8&&stag.fired>=flat.fired,{staggered:stag.fired,unstaggered:flat.fired,expect});
+    check('unstaggered-control-really-piles-up',flat.maxCo>=6,{maxCo:flat.maxCo,hist:flat.hist});
+    check('staggered-never-piles-into-one-frame',stag.maxCo<=4&&stag.maxCo<flat.maxCo,{staggered:stag.maxCo,unstaggered:flat.maxCo,hist:stag.hist});
+    check('work-is-spread-across-more-frames',stag.busy>flat.busy*1.5,{staggered:stag.busy,unstaggered:flat.busy,frames});
+    battle=oldBattle;}catch(error){battle=oldBattle;check('runtime',false,{error:String(error?.stack||error)});}
+    return {version:'1.31.36',model:'ai-core-timer-phase-stagger-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_AI_CORE_WIP6_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{check('head-on-spawn-contract',startBattle.toString().includes('playerFacing=Math.atan2')&&startBattle.toString().includes('enemyFacing=Math.atan2')&&!startBattle.toString().includes("Math.random()*Math.PI*2,'enemy'"),{});check('precision-acquire-holds-translation',aiCoreFlightCommand.toString().includes("attitudeMode='ACQUIRE';orbitSpeed=0;radialSpeed=0")&&aiCoreFlightCommand.toString().includes("attitudeMode='SETTLE';orbitSpeed=0;radialSpeed=0"),{});check('narrow-fixed-engage-suppresses-orbit',aiCoreFlightCommand.toString().includes('precisionFixed>.72')&&aiCoreFlightCommand.toString().includes('orbitSpeed=0;orbitSuppressed=true'),{});check('stopping-aware-angular-controller',typeof flightControlAngularCommand==='function'&&flightControlAngularCommand.toString().includes('stoppingOmega')&&flightControlAngularCommand.toString().includes('targetOmega'),{});check('flight-control-debug-mode',document.querySelectorAll('[data-ai-debug-mode]').length===6&&!!document.querySelector('[data-ai-debug-mode="control"]'),{modes:document.querySelectorAll('[data-ai-debug-mode]').length});}catch(error){check('runtime',false,{error:String(error?.stack||error)});}return {version:'1.31.35',model:'universal-ai-attitude-stability-wip6',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_AI_CORE_WIP4_TEST__=()=>{
     const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),oldBattle=battle;try{
