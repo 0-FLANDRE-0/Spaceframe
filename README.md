@@ -10,8 +10,8 @@
 
 ## 개발 상태
 
-프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.35.html`의 `<title>`에 표기된
-**1.31.35** 입니다.
+프로토타입입니다. 현재 빌드는 `Spaceframe_v1.31.36.html`의 `<title>`에 표기된
+**1.31.36** 입니다.
 
 게임 파일 이름은 `Spaceframe_v<버전>.html` 형식이며 버전이 올라갈 때마다 바뀝니다.
 저장소 최상위에는 항상 최신 정식 HTML 하나만 둡니다.
@@ -27,7 +27,7 @@
 ```
 git clone https://github.com/0-FLANDRE-0/Spaceframe.git
 cd Spaceframe
-# Spaceframe_v1.31.35.html 을 브라우저에서 열기
+# Spaceframe_v1.31.36.html 을 브라우저에서 열기
 ```
 
 파일을 더블클릭하거나 브라우저로 끌어다 놓아도 됩니다(`file://` 로 동작합니다).
