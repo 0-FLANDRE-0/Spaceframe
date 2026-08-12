@@ -8591,11 +8591,16 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
       check('radar-only-contact-is-seen-not-coasting',solo.tr.source==='RADAR'&&solo.tr.detected===true&&solo.tr.radarFix===true,{source:solo.tr.source});
       check('radar-only-contact-produces-a-velocity-estimate',solo.tr.radarVelocityValid===true,{v:[solo.tr.radarVx,solo.tr.radarVy]});
       // 발표한 측정값만으로 융합 위치가 재구성되어야 한다. 참값이 몰래 섞이면 어긋난다.
-      check('position-is-reconstructible-from-published-measurements',(()=>{
-        const b=Number.isFinite(solo.tr.radarFusedBearingRad)?solo.tr.radarFusedBearingRad:solo.tr.radarBearingRad;
-        const rx=solo.o.x+Math.cos(b)*solo.tr.radarRangeM,ry=solo.o.y+Math.sin(b)*solo.tr.radarRangeM;
-        return Math.hypot(solo.tr.estimatedX-rx,solo.tr.estimatedY-ry)<2;
-      })(),{});
+      const recon=(()=>{const tr=solo.tr,b=Number.isFinite(tr.radarFusedBearingRad)?tr.radarFusedBearingRad:tr.radarBearingRad;
+        const rx=solo.o.x+Math.cos(b)*tr.radarRangeM,ry=solo.o.y+Math.sin(b)*tr.radarRangeM;
+        const ageS=Math.max(0,(battle?.time||0)-(Number(tr._radarMeasurementAtS)||0));
+        const px=rx+(Number(tr.radarVx)||0)*ageS,py=ry+(Number(tr.radarVy)||0)*ageS;
+        return {rawErr:Math.hypot(tr.estimatedX-rx,tr.estimatedY-ry),projErr:Math.hypot(tr.estimatedX-px,tr.estimatedY-py),
+          ageS,speed:Math.hypot(Number(tr.radarVx)||0,Number(tr.radarVy)||0),rx,ry,px,py,ex:tr.estimatedX,ey:tr.estimatedY};})();
+      // estimatedX/Y는 측정값을 '현재 시각으로 투영한' 값이다. 투영을 빼고 원측정과 비교하면
+      // 루프가 재방문 주기의 어디서 끝나느냐에 따라 speed×age(최대 ~6m)만큼 어긋나 확률적으로 실패한다.
+      // 발표된 방위·거리·속도로 투영까지 재구성하는 것이 원래 의도이고, 그러면 오차가 1m 미만으로 떨어진다.
+      check('position-is-reconstructible-from-published-measurements',recon.projErr<2,recon);
 
       // ── 결정적 시험: 선언된 속도와 실제 이동을 어긋나게 만든다 ────────
       // 표적을 +y로 움직이면서 target.vy에는 -y를 적어 둔다. 관측자에서 볼 때 이
