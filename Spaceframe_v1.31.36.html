@@ -7126,6 +7126,27 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function getShipDiagramCache(ship){
     initShipRuntimeCaches(ship);if(ship._cache.diagram)return ship._cache.diagram;const geom=generateArmorGeometry(ship.design),hulls=ship.design.hullTiles.map(tile=>({tile,points:tilePolygonSub(tile)})),boundaries=hullBoundarySegments(ship.design),pts=[];for(const h of hulls)for(const p of h.points)pts.push({x:p[0],y:p[1]});for(const p of geom.polygons)for(const q of p.points)pts.push(q);let rawMinX=Infinity,rawMinY=Infinity,rawMaxX=-Infinity,rawMaxY=-Infinity;for(const p of pts){rawMinX=Math.min(rawMinX,p.x);rawMinY=Math.min(rawMinY,p.y);rawMaxX=Math.max(rawMaxX,p.x);rawMaxY=Math.max(rawMaxY,p.y);}const result={geom,hulls,boundaries,rawMinX,rawMinY,rawMaxX,rawMaxY};ship._cache.diagram=result;return result;
   }
+  // PERF: 인디케이터는 8Hz로 다시 그려지는데, 함체 타일·경계·모듈의 '좌표'는 전투 중 바뀌지 않는다.
+  // 바뀌는 건 색뿐(hp 비율)이므로 경로만 Path2D로 캐시하고 색은 매 호출 그대로 계산한다.
+  // 손상 상태가 캐시 키에 들어가지 않으므로 무효화를 빠뜨려 패널이 굳는 사고가 원천적으로 불가능하다.
+  // 키는 map의 파라미터를 열거하지 않고 변환 자체를 세 점으로 탐침한다 — 아핀 변환은 이 셋으로 결정되고,
+  // 파라미터를 하나 빠뜨려 캐시가 썩는 경로가 없다.
+  function indicatorGeometryCache(ship,map){
+    initShipRuntimeCaches(ship);
+    const o=map(0,0),ux=map(1,0),uy=map(0,1),mods=ship.design.modules||[];
+    const key=`${o.x},${o.y},${ux.x},${ux.y},${uy.x},${uy.y},${mods.length}`;
+    const hit=ship._cache.indicatorGeom;
+    if(hit&&hit.key===key)return hit;
+    const d=getShipDiagramCache(ship);
+    const tiles=d.hulls.map(item=>{const path=new Path2D();item.points.forEach(([x,y],i)=>{const q=map(x,y);i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);});path.closePath();return path;});
+    const boundary=new Path2D();
+    for(const e of d.boundaries){const a=map(e.x1,e.y1),b=map(e.x2,e.y2);boundary.moveTo(a.x,a.y);boundary.lineTo(b.x,b.y);}
+    const modules=mods.map(m=>{const c0=map(m.sx,m.sy),c1=map(m.sx+m.sw,m.sy),c2=map(m.sx+m.sw,m.sy+m.sh),c3=map(m.sx,m.sy+m.sh),ct=map(m.sx+m.sw/2,m.sy+m.sh/2);
+      const quad=new Path2D();quad.moveTo(c0.x,c0.y);quad.lineTo(c1.x,c1.y);quad.lineTo(c2.x,c2.y);quad.lineTo(c3.x,c3.y);quad.closePath();
+      const cross=new Path2D();cross.moveTo(c0.x,c0.y);cross.lineTo(c2.x,c2.y);cross.moveTo(c1.x,c1.y);cross.lineTo(c3.x,c3.y);
+      return {quad,cross,cx:ct.x,cy:ct.y};});
+    return (ship._cache.indicatorGeom={key,tiles,boundary,modules});
+  }
   function drawShipIndicator(ctx,w,h,ship,options={}){
     ctx.clearRect(0,0,w,h);const isTarget=!!options.target,controls=!!options.controls,title=options.title||ship.name,shieldVisible=options.showShield!==false&&ship?.systems?.shieldOnline!==false,sp=structurePct(ship),sh=shieldVisible&&totalShieldMax(ship)?totalShield(ship)/totalShieldMax(ship):0,headingDeg=(ship.angle*180/Math.PI+360)%360,ownControls=controls&&!isTarget;
     ctx.fillStyle=isTarget?'rgba(255,221,145,.92)':'rgba(186,224,239,.92)';ctx.font='700 10px ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(title,9,15);ctx.font=(ownControls?'8px':'9px')+' ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='right';ctx.fillStyle=sp<.3?'#ff8383':'#9ce8b8';ctx.fillText(`구조 ${Math.round(sp*100)}%`,w-9,15);ctx.font=(ownControls?'700 8px':'700 9px')+' ui-monospace,SFMono-Regular,Menlo,monospace';ctx.textAlign='center';ctx.fillStyle=isTarget?'rgba(255,219,139,.82)':'rgba(151,213,238,.82)';ctx.fillText(`HDG ${headingDeg.toFixed(0).padStart(3,'0')}°`,w/2,28);
@@ -7133,10 +7154,11 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
     const panelPad=ownControls?132:0,panelBox=ownControls?{x:w-126,y:34,w:116,h:Math.max(126,h-72)}:null,midX=(rawMinX+rawMaxX)/2,midY=(rawMinY+rawMaxY)/2,displayRotation=options.fixedUpright?-Math.PI/2:ship.angle,rawSpanX=Math.max(1,rawMaxX-rawMinX),rawSpanY=Math.max(1,rawMaxY-rawMinY),view=ownControls?{x:10,y:35,w:w-panelPad-16,h:Math.max(72,h-68)}:{x:12,y:36,w:w-24,h:Math.max(45,h-65)},fitSpan=Math.max(1,Math.hypot(rawSpanX,rawSpanY)),shieldEntries=shieldVisible?shieldLayerEntries(ship):[],markerSafe=hitMarkerExtent(0)+3,layerExtra=Math.max(0,shieldEntries.length-1)*5,maxOuterRadius=Math.max(12,Math.min(view.w,view.h)/2-markerSafe),maxBaseRadius=Math.max(10,maxOuterRadius-layerExtra),ringFactor=ownControls?.64:isTarget?.54:.5;
     let scale=Math.min(view.w,view.h)/fitSpan*(ownControls?1.14:.94);const desiredBase=Math.max(1,Math.max(rawSpanX,rawSpanY)*scale*ringFactor);if(desiredBase>maxBaseRadius)scale*=maxBaseRadius/desiredBase;const cx=view.x+view.w/2,cy=view.y+view.h/2,map=(sx,sy)=>{const r=rotate(sx-midX,sy-midY,displayRotation);return {x:cx+r.x*scale,y:cy+r.y*scale};};
     ctx.save();ctx.beginPath();ctx.rect(view.x,view.y,view.w,view.h);ctx.clip();
-    for(const item of diagram.hulls){const t=item.tile,frame=tileFrame(ship,t.id),pct=frame?.maxHp?Math.max(0,frame.hp/frame.maxHp):0,poly=item.points.map(p=>map(p[0],p[1]));ctx.beginPath();ctx.moveTo(poly[0].x,poly[0].y);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i].x,poly[i].y);ctx.closePath();ctx.fillStyle=pct<=0?'rgba(76,39,43,.34)':isTarget?`rgba(121,70,64,${.24+.44*pct})`:`rgba(45,105,128,${.22+.46*pct})`;ctx.fill();}
-    ctx.strokeStyle=isTarget?'rgba(255,171,148,.72)':'rgba(137,220,251,.7)';ctx.lineWidth=1;ctx.lineJoin='bevel';ctx.beginPath();for(const e of diagram.boundaries){const a=map(e.x1,e.y1),b=map(e.x2,e.y2);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
+    const geoCache=indicatorGeometryCache(ship,map);
+    diagram.hulls.forEach((item,gi)=>{const t=item.tile,frame=tileFrame(ship,t.id),pct=frame?.maxHp?Math.max(0,frame.hp/frame.maxHp):0;ctx.fillStyle=pct<=0?'rgba(76,39,43,.34)':isTarget?`rgba(121,70,64,${.24+.44*pct})`:`rgba(45,105,128,${.22+.46*pct})`;ctx.fill(geoCache.tiles[gi]);});
+    ctx.strokeStyle=isTarget?'rgba(255,171,148,.72)':'rgba(137,220,251,.7)';ctx.lineWidth=1;ctx.lineJoin='bevel';ctx.stroke(geoCache.boundary);
     for(const wall of ship.design.walls||[]){if(wall.kind!=='bulkhead')continue;syncBulkheadWall(wall);drawWallDamageCells(ctx,wall,map,Math.max(1,(wall.thicknessMm/1000)/SUB_METERS*scale),'#a9b8c1','#42535e');}
-    for(const m of ship.design.modules){const corners=[map(m.sx,m.sy),map(m.sx+m.sw,m.sy),map(m.sx+m.sw,m.sy+m.sh),map(m.sx,m.sy+m.sh)],center=map(m.sx+m.sw/2,m.sy+m.sh/2),moduleW=Math.max(1,m.sw*scale),moduleH=Math.max(1,m.sh*scale),pct=m.maxHp?Math.max(0,m.hp/m.maxHp):0;ctx.beginPath();ctx.moveTo(corners[0].x,corners[0].y);for(let i=1;i<corners.length;i++)ctx.lineTo(corners[i].x,corners[i].y);ctx.closePath();ctx.fillStyle=moduleHealthColor(m);ctx.globalAlpha=pct<=0?.28:.78;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=pct<=0?'#8e555b':moduleDisplayEdge(m);ctx.lineWidth=.7;ctx.stroke();if(pct<=0){ctx.beginPath();ctx.moveTo(corners[0].x,corners[0].y);ctx.lineTo(corners[2].x,corners[2].y);ctx.moveTo(corners[1].x,corners[1].y);ctx.lineTo(corners[3].x,corners[3].y);ctx.stroke();}else if(Math.min(moduleW,moduleH)>8){ctx.fillStyle='#071019';ctx.font=`700 ${Math.max(6,Math.min(9,Math.min(moduleW,moduleH)*.42))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(moduleDisplayBadge(m),center.x,center.y);}}
+    (ship.design.modules||[]).forEach((m,mi)=>{const g=geoCache.modules[mi],center={x:g.cx,y:g.cy},moduleW=Math.max(1,m.sw*scale),moduleH=Math.max(1,m.sh*scale),pct=m.maxHp?Math.max(0,m.hp/m.maxHp):0;ctx.fillStyle=moduleHealthColor(m);ctx.globalAlpha=pct<=0?.28:.78;ctx.fill(g.quad);ctx.globalAlpha=1;ctx.strokeStyle=pct<=0?'#8e555b':moduleDisplayEdge(m);ctx.lineWidth=.7;ctx.stroke(g.quad);if(pct<=0){ctx.stroke(g.cross);}else if(Math.min(moduleW,moduleH)>8){ctx.fillStyle='#071019';ctx.font=`700 ${Math.max(6,Math.min(9,Math.min(moduleW,moduleH)*.42))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(moduleDisplayBadge(m),center.x,center.y);}});
     paintArmorGeometry(ctx,map,geom,.94);drawArmorLocalDamage(ctx,ship.design,map,.8);
     const traces=ship.combatTraces||[];for(let ti=traces.length-1;ti>=0;ti--){const tr=traces[ti],life=Math.max(0,tr.t/tr.maxT);ctx.save();ctx.globalAlpha=.18+.82*life;ctx.lineCap='round';ctx.strokeStyle='rgba(255,164,105,.28)';ctx.lineWidth=.58;ctx.beginPath();for(const f of tr.fragments||[]){if(f.major)continue;const a=map(f.x1,f.y1),b=map(f.x2,f.y2);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.strokeStyle='rgba(255,196,132,.48)';ctx.lineWidth=.92;ctx.beginPath();for(const f of tr.fragments||[]){if(!f.major)continue;const a=map(f.x1,f.y1),b=map(f.x2,f.y2);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();if(Array.isArray(tr.mainSegments)&&tr.mainSegments.length){ctx.strokeStyle='#ffe27a';ctx.lineWidth=1.55;ctx.beginPath();for(const seg of tr.mainSegments){const a=map(seg.x1,seg.y1),b=map(seg.x2,seg.y2);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();}else if(tr.mainStart&&tr.mainEnd){const a=map(tr.mainStart.x,tr.mainStart.y),b=map(tr.mainEnd.x,tr.mainEnd.y);ctx.strokeStyle='#ffe27a';ctx.lineWidth=1.55;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=.65;ctx.beginPath();for(const e of tr.entries||[]){const a=map(e.entry.x,e.entry.y),b=map(e.exit.x,e.exit.y);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();}
     const pipeBreaks=ship.thermalPipeBreaks||[];for(const br of pipeBreaks){const p=map(br.x,br.y),life=Math.max(0,br.t/Math.max(.001,br.maxT||THERMAL_PIPE_BREAK_MARKER_S)),r=Math.max(2.6,Math.min(5.2,scale*.16));ctx.save();ctx.globalAlpha=.25+.75*life;ctx.strokeStyle='#ff5b48';ctx.lineWidth=Math.max(1.2,r*.42);ctx.shadowColor='#ff4a38';ctx.shadowBlur=4;ctx.beginPath();ctx.moveTo(p.x-r,p.y-r);ctx.lineTo(p.x+r,p.y+r);ctx.moveTo(p.x+r,p.y-r);ctx.lineTo(p.x-r,p.y+r);ctx.stroke();ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,205,180,.82)';ctx.lineWidth=.7;ctx.beginPath();ctx.arc(p.x,p.y,r+1.4,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -8169,6 +8191,60 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     check('battle-start-creates-the-queue',startBattle.toString().includes('_secondary:{jobs:[]')&&updateBattle.toString().includes('drainSecondaryDamage()'),{});
     battle=oldBattle;}catch(error){battle=oldBattle;check('runtime',false,{error:String(error?.stack||error)});}
     return {version:'1.31.36',model:'secondary-damage-queue-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
+  // PERF 회귀: 인디케이터 기하 캐시가 손상 표시를 삼키면 안 된다. 지금은 손상이 캐시 키에 들어가지
+  // 않아 구조적으로 안전하지만, 나중에 정적 층을 오프스크린으로 캐시하면 그때부터 위험해진다.
+  // 네 갈래(모듈·프레임 타일·격벽 셀·장갑 셀)를 각각 손상시켜 픽셀이 바뀌는지 못 박아 둔다.
+  window.__SPACEFRAME_INDICATOR_CACHE_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),oldBattle=battle;try{
+    const ship=createShip('indcache','IND CACHE',defaultDesign(),0,0,0,'player');
+    battle={player:ship,enemies:[],time:0};
+    // 패널 전체를 해싱하면 하단 통계 텍스트만 갱신돼도 통과해버려서, 정작 도해가 굳는 것을 못 잡는다.
+    // 머리글·바닥글·우측 위젯 패널을 뺀 도해 영역만 본다.
+    const diagramHash=(cx,w,h)=>{const x0=4,y0=40,x1=Math.max(x0+1,w-134),y1=Math.max(y0+1,h-30);
+      const d=cx.getImageData(x0,y0,x1-x0,y1-y0).data;let a=0;for(let i=0;i<d.length;i+=4)a=(a*31+d[i]+d[i+1]*3+d[i+2]*7)|0;return a;};
+    const W=300,H=400,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c2=cv.getContext('2d');
+    const render=(w=W,h=H)=>{c2.canvas.width=w;c2.canvas.height=h;c2.fillStyle='#000';c2.fillRect(0,0,w,h);
+      drawShipIndicator(c2,w,h,ship,{title:'IND',fixedUpright:true,controls:true});
+      return diagramHash(c2,w,h);};
+    const base=render();
+    check('indicator-renders',Number.isFinite(base)&&base!==0,{base});
+    check('same-state-is-stable',render()===base,{});
+    // ① 모듈 파괴
+    const mod=(ship.design.modules||[]).find(m=>m.hp>0);mod.hp=0;const afterModule=render();
+    check('module-damage-changes-the-panel',afterModule!==base,{});
+    // ② 프레임 타일 손상
+    const tile=(ship.frameTiles||[])[0];let afterTile=afterModule;
+    if(tile){tile.hp=tile.maxHp*.15;afterTile=render();}
+    check('hull-tile-damage-changes-the-panel',!tile||afterTile!==afterModule,{hasTile:!!tile});
+    // ③ 격벽 셀 손상
+    let afterWall=afterTile,bulkhead=null;
+    for(const w of ship.design.walls||[]){if(w.kind==='bulkhead'){syncBulkheadWall(w);if(w.damageCells&&w.damageCells.length){bulkhead=w;break;}}}
+    if(bulkhead){bulkhead.damageCells.forEach((c,i)=>{if(i%2===0)c.hp=c.maxHp*.05;});afterWall=render();}
+    check('bulkhead-damage-changes-the-panel',!bulkhead||afterWall!==afterTile,{hasBulkhead:!!bulkhead});
+    // ④ 장갑 셀 손상
+    let afterArmor=afterWall,armorWall=null;
+    for(const w of ship.design.walls||[]){if(w.kind==='armor'){syncArmorWall(w);const o=w.layers?.[w.layers.length-1];if(o?.damageCells?.length){armorWall=o;break;}}}
+    if(armorWall){armorWall.damageCells.forEach((c,i)=>{if(i%2===0)c.hp=c.maxHp*.05;});afterArmor=render();}
+    check('armor-damage-changes-the-panel',!armorWall||afterArmor!==afterWall,{hasArmor:!!armorWall});
+    // 리사이즈 검증: 캔버스 크기가 바뀌면 해시는 어차피 달라지므로 그것만으로는 아무것도 증명하지
+    // 못한다. 캐시가 식은 상태에서 그린 결과와, 다른 크기를 거쳐 온 상태에서 그린 결과를 비교해야
+    // 기하가 실제로 다시 잡혔는지 알 수 있다.
+    const cold=createShip('indcache-cold','IND COLD',defaultDesign(),0,0,0,'player');
+    battle={player:cold,enemies:[],time:0};
+    const coldCv=document.createElement('canvas'),coldCtx=coldCv.getContext('2d');
+    const renderShip=(sh,cx,w,h)=>{cx.canvas.width=w;cx.canvas.height=h;cx.fillStyle='#000';cx.fillRect(0,0,w,h);
+      drawShipIndicator(cx,w,h,sh,{title:'IND',fixedUpright:true,controls:true});
+      return diagramHash(cx,w,h);};
+    const coldSmall=renderShip(cold,coldCtx,240,320);
+    const warm=createShip('indcache-warm','IND WARM',defaultDesign(),0,0,0,'player');
+    battle={player:warm,enemies:[],time:0};
+    const warmCv=document.createElement('canvas'),warmCtx=warmCv.getContext('2d');
+    renderShip(warm,warmCtx,W,H);
+    const warmSmall=renderShip(warm,warmCtx,240,320);
+    check('panel-resize-rebuilds-geometry',coldSmall===warmSmall,{coldSmall,warmSmall});
+    battle={player:ship,enemies:[],time:0};
+    check('resize-back-is-stable',render(W,H)===afterArmor,{});
+    battle=oldBattle;}catch(error){battle=oldBattle;check('runtime',false,{error:String(error?.stack||error)});}
+    return {version:'1.31.36',model:'indicator-geometry-cache-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_IMPACT_DETERMINISM_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
     const r1=makeImpactRng(12345),r2=makeImpactRng(12345),r3=makeImpactRng(12346);
     const a=Array.from({length:8},()=>r1()),b=Array.from({length:8},()=>r2()),c=Array.from({length:8},()=>r3());
