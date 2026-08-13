@@ -7045,6 +7045,26 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function drawObservedShieldPreview(ctx,track,cx,cy,baseR,rotation=-Math.PI/2){const layers=observedShieldLayerSnapshots(track);if(!layers.length)return;ctx.save();layers.forEach((layer,index)=>{const r=baseR+(layers.length-1-index)*5,mode=shieldFieldMode(layer.fieldMode||'bubble');for(const seg of mode.ringSegments){const pct=observedShieldArcRatio(track,layer,seg.key);ctx.strokeStyle=shieldLayerStateColor(layer.profileId||'',pct,.18+.48*pct);ctx.lineWidth=1.5+pct*2;if(layer?.arcs?.[seg.key]?.collapsed)ctx.setLineDash([3,3]);else ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,r,seg.mid-seg.span+rotation,seg.mid+seg.span+rotation);ctx.stroke();}});ctx.setLineDash([]);ctx.restore();}
   function drawBdaObservedModuleLocal(ctx,rec,ship,sub,alphaScale=1){const px=(rec.sx/SUBDIV-ship.comX)*sub*SUBDIV,py=(rec.sy/SUBDIV-ship.comY)*sub*SUBDIV,rw=rec.sw*sub,rh=rec.sh*sub,pad=Math.min(1.4,Math.max(.22,sub*.1)),confidence=clamp01(rec.confidence||.6);ctx.save();ctx.globalAlpha=(rec.external?.84:.52)*confidence*alphaScale;ctx.fillStyle=bdaDamageColor(rec);ctx.fillRect(px+pad,py+pad,Math.max(.5,rw-pad*2),Math.max(.5,rh-pad*2));ctx.globalAlpha=(rec.external?.92:.66)*confidence*alphaScale;ctx.strokeStyle=rec.edge||'#b7d7e3';ctx.lineWidth=.75;if(!rec.external)ctx.setLineDash([2.5,2]);ctx.strokeRect(px+pad,py+pad,Math.max(.5,rw-pad*2),Math.max(.5,rh-pad*2));if(rec.damageClass==='destroyed'){ctx.setLineDash([]);ctx.strokeStyle='rgba(255,118,118,.85)';ctx.beginPath();ctx.moveTo(px+pad,py+pad);ctx.lineTo(px+rw-pad,py+rh-pad);ctx.moveTo(px+rw-pad,py+pad);ctx.lineTo(px+pad,py+rh-pad);ctx.stroke();}ctx.restore();}
   function drawBdaHitMarker(ctx,p,hit,life=1,index=0){const kind=hit?.kind||'impactStop',size=(index===0?4.8:3.6)*(1+.08*Math.sin((1-life)*Math.PI*6));if(kind==='shield')drawDetachedCross(ctx,p.x,p.y,size+1.8,'rgba(122,229,255,.98)',index===0?2:1.5,Math.PI/4,2.2,1.8);else if(kind==='impactCritical')drawOutlinedDetachedCross(ctx,p.x,p.y,size+1.9,'rgba(174,24,39,.99)','rgba(255,214,218,.96)',index===0?2.1:1.6,0,2.0,1.7);else if(kind==='impactPen')drawDetachedCross(ctx,p.x,p.y,size+1.6,'rgba(255,132,132,.98)',index===0?2:1.5,0,2.0,1.7);else if(kind==='impactRicochet'||kind==='ricochet')drawDetachedCross(ctx,p.x,p.y,size+1.4,'rgba(255,211,70,.99)',index===0?1.9:1.45,0,2.0,1.7);else if(kind==='weapon-physical')drawDetachedCross(ctx,p.x,p.y,size+1.6,'rgba(255,165,108,.98)',index===0?2:1.5,Math.PI/4,2.0,1.7);else drawDetachedCross(ctx,p.x,p.y,size+1.1,'rgba(128,145,156,.96)',index===0?1.8:1.35,0,2.0,1.7);}
+  // PERF: 적 관측 함체는 매 프레임 hullTiles로 경로를 다시 만들고 경계선마다 stroke를 따로 불렀다
+  // (실측 프레임당 lineTo 868 · moveTo 476 · beginPath 285 · stroke 284). 함체 기하는 전투 중 바뀌지
+  // 않으므로 Path2D로 한 번만 만들어 재사용한다. 좌표는 comX/comY를 빼지 않은 셀 단위로 담는다 —
+  // 모듈이 파괴돼 무게중심이 옮겨가도 캐시를 버릴 필요가 없도록 이동은 그릴 때 transform으로 준다.
+  // 좌표 수식은 원본과 한 글자도 다르지 않게 둔다. scale() 변환으로 대신하면 래스터라이즈와
+  // lineWidth 반올림이 달라져 픽셀이 어긋난다(실측 z1.4에서 428px, 최대 Δ33). 대신 cell과
+  // 무게중심을 캐시 키로 잡는다 — 줌은 핀치할 때만, 무게중심은 피해로 모듈이 사라질 때만 바뀐다.
+  function observedHullPaths(ship,cell){
+    initShipRuntimeCaches(ship);
+    const c=ship._cache.observedPaths;
+    if(c&&c.cell===cell&&c.comX===ship.comX&&c.comY===ship.comY)return c;
+    const d=getShipDiagramCache(ship),fill=new Path2D();
+    for(const h of d.hulls){h.points.forEach(([sx,sy],i)=>{const px=(sx/SUBDIV-ship.comX)*cell,py=(sy/SUBDIV-ship.comY)*cell;i?fill.lineTo(px,py):fill.moveTo(px,py);});fill.closePath();}
+    // 경계선은 한 Path2D로 묶어 한 번에 stroke 하면 안 된다. 선폭이 1을 넘는 줌에서는 세그먼트
+    // 끝이 겹치는데, 개별 stroke는 그 겹침을 두 번 합성하고 묶어서 stroke하면 한 번만 칠한다
+    // (실측 z1.4에서 428px 차이). 좌표만 미리 풀어두고 그리기는 원본과 같은 순서·같은 호출로 한다.
+    const segs=new Float64Array(d.boundaries.length*4);
+    d.boundaries.forEach((e,i)=>{const o=i*4;segs[o]=(e.x1/SUBDIV-ship.comX)*cell;segs[o+1]=(e.y1/SUBDIV-ship.comY)*cell;segs[o+2]=(e.x2/SUBDIV-ship.comX)*cell;segs[o+3]=(e.y2/SUBDIV-ship.comY)*cell;});
+    return (ship._cache.observedPaths={cell,comX:ship.comX,comY:ship.comY,fill,segs});
+  }
   function drawObservedShipPartial(ctx,ship,track,stage){
     const center=sensorContactScreenPoint(track),lengthM=Math.max(2,(ship.geom.maxX-ship.geom.minX)*CELL_WORLD),beamM=Math.max(2,(ship.geom.maxY-ship.geom.minY)*CELL_WORLD),displayZoom=Math.max(camera.zoom,16/Math.max(lengthM,beamM)),cell=CELL_WORLD*displayZoom,sub=cell/SUBDIV;
     ctx.save();ctx.translate(center.x,center.y);ctx.rotate(ship.angle);
@@ -7053,10 +7073,10 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
       const qLen=Math.max(10,Math.round(lengthM/10)*10)*displayZoom,qBeam=Math.max(5,Math.round(beamM/5)*5)*displayZoom;
       ctx.setLineDash([5,4]);ctx.strokeStyle='rgba(164,226,247,.82)';ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(0,0,qLen*.5,qBeam*.5,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(102,185,215,.12)';ctx.fill();
     }else{
-      ctx.beginPath();for(const t of ship.design.hullTiles){const poly=tilePolygonSub(t);poly.forEach(([sx,sy],i)=>{const px=(sx/SUBDIV-ship.comX)*cell,py=(sy/SUBDIV-ship.comY)*cell;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.closePath();}
-      ctx.fillStyle=stage>=5?'rgba(91,107,117,.84)':stage>=4?'rgba(103,120,130,.82)':'rgba(116,128,136,.78)';ctx.fill();
+      const paths=observedHullPaths(ship,cell);
+      ctx.fillStyle=stage>=5?'rgba(91,107,117,.84)':stage>=4?'rgba(103,120,130,.82)':'rgba(116,128,136,.78)';ctx.fill(paths.fill);
       ctx.strokeStyle='rgba(164,226,247,.84)';ctx.lineWidth=Math.max(1,1.2*displayZoom);ctx.lineJoin='bevel';
-      for(const e of hullBoundarySegments(ship.design)){ctx.beginPath();ctx.moveTo((e.x1/SUBDIV-ship.comX)*cell,(e.y1/SUBDIV-ship.comY)*cell);ctx.lineTo((e.x2/SUBDIV-ship.comX)*cell,(e.y2/SUBDIV-ship.comY)*cell);ctx.stroke();}
+      const S=paths.segs;for(let i=0;i<S.length;i+=4){ctx.beginPath();ctx.moveTo(S[i],S[i+1]);ctx.lineTo(S[i+2],S[i+3]);ctx.stroke();}
       // 전장 본화면은 센서 식별 정보까지만 그린다. BDA 내부 추정/탄착점은 락온 표적 인디케이터 전용이다.
       if(stage>=4){for(const m of ship.design.modules){if(m.hp<=0||!EO_VISIBLE_EXTERNAL_MODULES.has(m.type))continue;const px=(m.sx/SUBDIV-ship.comX)*cell,py=(m.sy/SUBDIV-ship.comY)*cell,rw=m.sw*sub,rh=m.sh*sub,pad=Math.min(1.6,Math.max(.25,sub*.1));ctx.fillStyle=moduleDisplayColor(m);ctx.globalAlpha=.86;ctx.fillRect(px+pad,py+pad,Math.max(.5,rw-pad*2),Math.max(.5,rh-pad*2));ctx.globalAlpha=1;ctx.strokeStyle=moduleDisplayEdge(m);ctx.lineWidth=.8;ctx.strokeRect(px+pad,py+pad,Math.max(.5,rw-pad*2),Math.max(.5,rh-pad*2));}}
     }
@@ -7078,7 +7098,11 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function ensureIndicatorCanvasSize(canvas,ctx){
     const rect=canvas.getBoundingClientRect();if(!rect.width||!rect.height)return null;const dpr=Math.min(1.5,window.devicePixelRatio||1),nw=Math.max(1,Math.round(rect.width*dpr)),nh=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==nw||canvas.height!==nh){canvas.width=nw;canvas.height=nh;}ctx.setTransform(dpr,0,0,dpr,0,0);return {ctx,w:rect.width,h:rect.height};
   }
-  function positionTargetAid(){const own=document.getElementById('combatAid'),target=document.getElementById('targetAid');if(!own||!target)return;const gap=8,margin=6,targetTop=margin,targetMaxH=innerHeight<=420?188:272,targetHeight=Math.min(targetMaxH,Math.max(120,innerHeight-150));target.style.top=`${targetTop}px`;target.style.height=`${targetHeight}px`;const targetRect=target.getBoundingClientRect(),combatTop=Math.max(margin,targetRect.bottom+gap),combatMaxH=innerHeight<=420?224:378,combatHeight=Math.min(combatMaxH,Math.max(own.classList.contains('collapsed')?32:160,innerHeight-combatTop-margin));own.style.top=`${combatTop}px`;if(!own.classList.contains('collapsed'))own.style.height=`${combatHeight}px`;else own.style.height='32px';}
+  let aidLayoutSignature='';
+  function positionTargetAid(force=false){const own=document.getElementById('combatAid'),target=document.getElementById('targetAid');if(!own||!target)return;
+    // 매 프레임 style 쓰기 직후 getBoundingClientRect()를 부르면 강제 동기 레이아웃이 걸린다(실측 140µs/frame, 최악 41.7ms).
+    const sig=`${innerHeight}|${own.className}|${target.className}`;if(!force&&sig===aidLayoutSignature)return;aidLayoutSignature=sig;
+    const gap=8,margin=6,targetTop=margin,targetMaxH=innerHeight<=420?188:272,targetHeight=Math.min(targetMaxH,Math.max(120,innerHeight-150));target.style.top=`${targetTop}px`;target.style.height=`${targetHeight}px`;const targetRect=target.getBoundingClientRect(),combatTop=Math.max(margin,targetRect.bottom+gap),combatMaxH=innerHeight<=420?224:378,combatHeight=Math.min(combatMaxH,Math.max(own.classList.contains('collapsed')?32:160,innerHeight-combatTop-margin));own.style.top=`${combatTop}px`;if(!own.classList.contains('collapsed'))own.style.height=`${combatHeight}px`;else own.style.height='32px';}
   function shieldStateColor(pct,alpha=1){const t=clamp01(pct),r=Math.round(255+(105-255)*t),g=Math.round(88+(212-88)*t),b=Math.round(88+(255-88)*t);return `rgba(${r},${g},${b},${alpha})`;}
   function moduleHealthColor(m){const pct=m.maxHp?Math.max(0,m.hp/m.maxHp):0;if(pct<=0)return '#4b2d32';if(m.thermalRunaway)return '#ff4dc4';if(m.burning>0)return '#ff8d4a';if(m.thermalShutdown)return '#ffb15e';if((m.thermalStage||0)>=3)return '#ff5f5f';if((m.thermalStage||0)>=2)return '#f0a44b';if(pct<.3)return '#ff6f6f';if(pct<.65)return '#e7bd62';return moduleDisplayColor(m);}
   function shieldLayerStateColor(profileId,pct,alpha=1){const t=clamp01(pct),sizeClass=SHIELD_PROFILES[profileId]?.sizeClass||'S1',base=sizeClass==='S3'?[105,212,255]:sizeClass==='S2'?[104,236,214]:[181,205,255],low=[255,88,88],r=Math.round(low[0]+(base[0]-low[0])*t),g=Math.round(low[1]+(base[1]-low[1])*t),b=Math.round(low[2]+(base[2]-low[2])*t);return `rgba(${r},${g},${b},${alpha})`;}
