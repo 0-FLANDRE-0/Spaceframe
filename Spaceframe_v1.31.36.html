@@ -6610,7 +6610,7 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function updateSortieSummary(){const input=document.getElementById('sortieDistance'),distance=Math.max(1000,Number(input?.value)||5000),value=document.getElementById('sortieDistanceValue');if(value)value.textContent=formatDistanceCompact(distance);}
   function openSortieSetup(){const missingPlayer=validateDesign(playerDesign);if(missingPlayer.length){showToast(`아군 필수 요소 부족: ${missingPlayer.join(', ')}`);setDesignSide('player');return;}const missingEnemy=validateDesign(enemyDesignState);if(missingEnemy.length){showToast(`적함 필수 요소 부족: ${missingEnemy.join(', ')}`);setDesignSide('enemy');return;}const modal=document.getElementById('sortieSetup');updateSortieSummary();modal?.classList.add('visible');modal?.setAttribute('aria-hidden','false');document.getElementById('sortieLaunch')?.focus();}
   function closeSortieSetup(){const modal=document.getElementById('sortieSetup');modal?.classList.remove('visible');modal?.setAttribute('aria-hidden','true');}
-  function startBattle(distanceM=null){const chosen=Math.max(1000,Math.min(250000,Number(distanceM)||Number(document.getElementById('sortieDistance')?.value)||5000));closeSortieSetup();saveDesign();const half=chosen/2,playerSpawn={x:-half,y:0},enemySpawn={x:half,y:0},playerFacing=Math.atan2(enemySpawn.y-playerSpawn.y,enemySpawn.x-playerSpawn.x),enemyFacing=Math.atan2(playerSpawn.y-enemySpawn.y,playerSpawn.x-enemySpawn.x);battle={player:createShip('player','아군 함선',playerDesign,playerSpawn.x,playerSpawn.y,playerFacing,'player'),enemies:[createShip('enemy1','적 함선',enemyDesignState,enemySpawn.x,enemySpawn.y,enemyFacing,'enemy')],time:0,startDistanceM:chosen};battle.player.lockId=null;projectiles=[];effects=[];paused=false;autoFire=true;manualFireHeld=false;resetWeaponHudState();renderWeaponControlPanel(true);battleView.offsetX=0;battleView.offsetY=0;battleView.zoomMul=.9;document.getElementById('battleAlerts')?.replaceChildren();updateSensorSystems([battle.player,...battle.enemies],.35);for(const s of [battle.player,...battle.enemies]){updateUniversalAiCore(s,1);updateFireControlSystems(s,.12);}aiDebugUiState.shipId=battle.enemies[0]?.id||battle.player.id;{const layers=shieldLayerEntries(battle.player),guns=[...new Set(battle.player.design.modules.filter(m=>m.type==='gun'&&gunProfileForModule(m).weaponId).map(m=>gunProfileForModule(m).name))],shieldText=layers.length?layers.map(({profile,layer})=>`${profile.size}×${layer.units.toFixed(1)} ${formatEnergyMJ(Object.values(layer.pools).reduce((a,p)=>a+p.maxMJ,0))}`).join(' → '):'보호막 없음';addLog(`${formatDistanceCompact(chosen)} 출격 · ${guns.join(' / ')||'포탑 없음'} · ${shieldText}`,'info');}switchScene('battle');enterImmersive();resizeCanvases();const hint=document.getElementById('gestureHint');hint.classList.remove('fade');requestAnimationFrame(()=>hint.classList.add('fade'));}
+  function startBattle(distanceM=null){const chosen=Math.max(1000,Math.min(250000,Number(distanceM)||Number(document.getElementById('sortieDistance')?.value)||5000));closeSortieSetup();saveDesign();const half=chosen/2,playerSpawn={x:-half,y:0},enemySpawn={x:half,y:0},playerFacing=Math.atan2(enemySpawn.y-playerSpawn.y,enemySpawn.x-playerSpawn.x),enemyFacing=Math.atan2(playerSpawn.y-enemySpawn.y,playerSpawn.x-enemySpawn.x);battle={player:createShip('player','아군 함선',playerDesign,playerSpawn.x,playerSpawn.y,playerFacing,'player'),enemies:[createShip('enemy1','적 함선',enemyDesignState,enemySpawn.x,enemySpawn.y,enemyFacing,'enemy')],time:0,startDistanceM:chosen,_impactSeq:0,_secondary:{jobs:[],queued:0,completed:0,spilled:0,steps:0}};battle.player.lockId=null;projectiles=[];effects=[];paused=false;autoFire=true;manualFireHeld=false;resetWeaponHudState();renderWeaponControlPanel(true);battleView.offsetX=0;battleView.offsetY=0;battleView.zoomMul=.9;document.getElementById('battleAlerts')?.replaceChildren();updateSensorSystems([battle.player,...battle.enemies],.35);for(const s of [battle.player,...battle.enemies]){updateUniversalAiCore(s,1);updateFireControlSystems(s,.12);}aiDebugUiState.shipId=battle.enemies[0]?.id||battle.player.id;{const layers=shieldLayerEntries(battle.player),guns=[...new Set(battle.player.design.modules.filter(m=>m.type==='gun'&&gunProfileForModule(m).weaponId).map(m=>gunProfileForModule(m).name))],shieldText=layers.length?layers.map(({profile,layer})=>`${profile.size}×${layer.units.toFixed(1)} ${formatEnergyMJ(Object.values(layer.pools).reduce((a,p)=>a+p.maxMJ,0))}`).join(' → '):'보호막 없음';addLog(`${formatDistanceCompact(chosen)} 출격 · ${guns.join(' / ')||'포탑 없음'} · ${shieldText}`,'info');}switchScene('battle');enterImmersive();resizeCanvases();const hint=document.getElementById('gestureHint');hint.classList.remove('fade');requestAnimationFrame(()=>hint.classList.add('fade'));}
 
   function getShipById(id){if(!battle)return null;if(battle.player.id===id)return battle.player;return battle.enemies.find(e=>e.id===id)||null;}
   // 연결성이 1인 온전한 함선에서 타일이 살아 있는 채 HP만 감소하면 연결 그래프는 변하지 않는다.
@@ -6734,10 +6734,57 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
   function spallProfile(source={}){
     const kind=source.kind==='bulkhead'?'bulkhead':'armor',material=source.material||(kind==='bulkhead'?'bulkheadSteel':'armorSteel'),mat=MATERIALS[material]||MATERIALS.armorSteel,nonPenetration=!!source.nonPenetration,thicknessMm=Math.max(5,Math.min(1200,Number(source.thicknessMm)||80)),beforePen=Math.max(1,Number(source.beforePenetration)||Number(source.referencePenetrationRhaMm)||BASE_AMMO.referencePenetrationRhaMm),afterPen=Math.max(0,Number(source.afterPenetration)||0),depositedMJ=Math.max(.02,Number(source.depositedMJ)||0),integrityBefore=clamp01(Number.isFinite(Number(source.integrityBefore))?Number(source.integrityBefore):1),integrityAfter=clamp01(Number.isFinite(Number(source.integrityAfter))?Number(source.integrityAfter):integrityBefore),residualRatio=clamp01(afterPen/beforePen),lossRatio=1-residualRatio,breakage=clamp01((integrityBefore-integrityAfter)*3.1+(1-integrityAfter)*.58),normal=source.exitNormal||{x:0,y:0},dir=normalizedVector(source.dir?.x||1,source.dir?.y||0),signedNormal=(normal.x*dir.x+normal.y*dir.y)<0?{x:-normal.x,y:-normal.y}:normal,normalAlignment=Math.abs(signedNormal.x*dir.x+signedNormal.y*dir.y),obliquity=clamp01(1-normalAlignment),spallFactor=(mat.spallFactor||1)*Math.max(.1,Number(source.spallScale)||1),hardness=mat.fragmentHardness||1,nonPenScale=nonPenetration?.42:1,conversion=(kind==='bulkhead'?.0095:.0145)*spallFactor*(.72+.55*lossRatio+.55*breakage)*nonPenScale,fragmentEnergyMJ=Math.max(.008,depositedMJ*conversion),rawCount=((kind==='bulkhead'?3.5:5.5)+Math.sqrt(depositedMJ)*(kind==='bulkhead'?.72:1.08)+thicknessMm*(kind==='bulkhead'?.009:.015)+breakage*(kind==='bulkhead'?5:11))*(nonPenetration?.55:1),minCount=nonPenetration?(kind==='bulkhead'?2:3):(kind==='bulkhead'?4:7),maxCount=nonPenetration?(kind==='bulkhead'?10:16):(kind==='bulkhead'?22:44),count=Math.max(minCount,Math.min(maxCount,Math.round(rawCount*spallFactor))),majorCount=Math.max(1,Math.min(nonPenetration?4:8,Math.round(count*(.11+.09*hardness+.06*breakage)))),energyPerRayKJ=fragmentEnergyMJ*1000/Math.max(1,count),basePen=Math.max(.7,Math.min(kind==='bulkhead'?15:26,(1.05+Math.sqrt(energyPerRayKJ)*.62)*hardness*(nonPenetration?.82:1))),baseDamage=Math.max(.8,Math.min(kind==='bulkhead'?12:18,(1.15+Math.sqrt(energyPerRayKJ)*.54)*(.72+.38*spallFactor)*(nonPenetration?.82:1))),coneDeg=Math.max(8,Math.min(72,8+39*Math.pow(lossRatio,1.18)+25*breakage+11*Math.max(0,spallFactor-1)+15*obliquity+(nonPenetration?7:0))),normalBlend=Math.max(.08,Math.min(.56,.12+.21*obliquity+.14*lossRatio+.12*breakage+(nonPenetration?.12:0))),center=normalizedVector(dir.x*(1-normalBlend)+signedNormal.x*normalBlend,dir.y*(1-normalBlend)+signedNormal.y*normalBlend,dir);return {kind,material,count,majorCount,basePen,baseDamage,cone:coneDeg*Math.PI/180,coneDeg,center,fragmentEnergyMJ,depositedMJ,residualRatio,breakage,nonPenetration};
   }
+  // 2차 피해(파편) 큐 — 피격 순간에는 '무엇을 계산할지'만 확정하고, 실제 파편 추적은
+  // 이후 프레임에서 시간 예산 안에서 처리한다. 파편끼리는 서로 독립이라 처리 순서가
+  // 물리 결과를 바꾸지 않는다. 다만 같은 trace가 낳은 job들은 rng 스트림을 공유하므로
+  // 반드시 FIFO로 '앞 job을 끝내고 다음 job'을 지켜야 즉시 실행과 난수 순서가 같아진다.
+  const SECONDARY_DAMAGE_CONFIG=Object.freeze({budgetMs:.8,maxJobs:192});
+  function spallJobBegin(target,origin,dir,trace,logs,source){
+    source.dir=dir;const profile=spallProfile(source);
+    trace.stats.maxSpallConeDeg=Math.max(trace.stats.maxSpallConeDeg||0,profile.coneDeg);
+    trace.stats.spallEnergyMJ=(trace.stats.spallEnergyMJ||0)+profile.fragmentEnergyMJ;
+    return {target,origin,dir,trace,logs,source,profile,baseAngle:Math.atan2(profile.center.y,profile.center.x),candidateGroup:null,i:0,generated:0,done:false};
+  }
+  // 파편 1발 전진. 완료되면 true. 후보 격자는 첫 스텝에서 만든다 — 처리 시점의 함선 상태를 본다.
+  function spallJobStep(job){
+    if(job.done)return true;
+    const {target,origin,dir,trace,logs,source,profile}=job;
+    if(job.i>=profile.count||trace.fragments.length>=84){
+      const g=job.candidateGroup;
+      trace.stats.fragmentsGenerated+=job.generated;
+      trace.stats.fragmentCandidateGroups=(trace.stats.fragmentCandidateGroups||0)+1;
+      if(g){trace.stats.fragmentCandidateRays=(trace.stats.fragmentCandidateRays||0)+g.rays;trace.stats.fragmentCandidateCellVisits=(trace.stats.fragmentCandidateCellVisits||0)+g.cellVisits;trace.stats.fragmentCandidateCellCacheHits=(trace.stats.fragmentCandidateCellCacheHits||0)+g.cellCacheHits;trace.stats.fragmentCandidateCellCacheMisses=(trace.stats.fragmentCandidateCellCacheMisses||0)+g.cellCacheMisses;}
+      job.done=true;return true;}
+    if(!job.candidateGroup)job.candidateGroup=createFragmentCandidateGroup(fragmentCollisionIndex(target.design));
+    const i=job.i++,major=i<profile.majorCount,rank=(i+.5)/Math.max(1,profile.count),structured=(rank*2-1)*profile.cone,jitter=(traceRandom(trace)-.5)*profile.cone*.13,penScale=major?1.35+traceRandom(trace)*.42:.48+traceRandom(trace)*.48,damageScale=major?1.22+traceRandom(trace)*.34:.44+traceRandom(trace)*.5,a=job.baseAngle+structured+jitter,d={x:Math.cos(a),y:Math.sin(a)},energyKJ=Math.max(.1,profile.fragmentEnergyMJ*1000/Math.max(1,profile.count)),fragment={major,penetration:profile.basePen*penScale,damage:profile.baseDamage*damageScale,sourceMaterial:profile.material,weight:energyKJ};
+    if(source.kind==='bulkhead'&&source.wall){const lined=applyBulkheadLinerToFragment(source.wall,source.point||origin,{penetration:fragment.penetration,damage:fragment.damage,energyKJ},1,trace);fragment.penetration=lined.penetration;fragment.damage=lined.damage;fragment.weight=lined.energyKJ;if(lined.captured){trace.fragments.push({x1:origin.x,y1:origin.y,x2:origin.x,y2:origin.y,major,penetration:0,endPenetration:0,damagePower:0,hitType:'liner-captured',damage:0,sourceMaterial:profile.material,coneDeg:profile.coneDeg});job.generated++;return false;}}
+    const frag=traceFragmentRay(target,origin,d,fragment,trace,logs,job.candidateGroup);
+    frag.coneDeg=profile.coneDeg;trace.fragments.push(frag);job.generated++;return false;
+  }
+  function spallJobRun(job){let guard=0;while(!spallJobStep(job)&&++guard<4096);return job;}
+  // 큐가 살아 있을 때만 미룬다. 큐는 startBattle이 만든다 — 전투 밖(테스트·도구)에서는 즉시 계산된다.
+  function secondaryDamageQueue(){return battle&&battle._secondary||null;}
+  function enqueueSecondaryDamage(job){const q=secondaryDamageQueue();if(!q)return false;
+    // 상한을 넘으면 가장 오래된 것부터 즉시 소진한다. 메모리를 무한히 키우느니 그 프레임에서 갚는다.
+    while(q.jobs.length>=SECONDARY_DAMAGE_CONFIG.maxJobs){spallJobRun(q.jobs.shift());q.spilled++;}
+    q.jobs.push(job);q.queued++;return true;}
+  // 매 프레임 예산만큼 소진한다. 표적이 파괴돼도 계속 처리한다 — 파괴는 이미 확정된 사건이고,
+  // 남은 파편은 잔해에 피해를 더할 뿐이라 승패를 바꾸지 않으면서 파괴 프레임에 스파이크도 안 만든다.
+  function drainSecondaryDamage(budgetMs=SECONDARY_DAMAGE_CONFIG.budgetMs){
+    const q=secondaryDamageQueue();if(!q||!q.jobs.length)return 0;
+    const t0=performance.now(),deadline=t0+Math.max(0,budgetMs);let steps=0;
+    while(q.jobs.length){
+      const job=q.jobs[0];
+      // FIFO 엄수: 앞 job을 끝내기 전에 다음 job으로 넘어가지 않는다(rng 순서 보존).
+      while(!spallJobStep(job)){steps++;if(performance.now()>=deadline){q.steps+=steps;return steps;}}
+      q.jobs.shift();q.completed++;
+      if(performance.now()>=deadline)break;
+    }
+    q.steps+=steps;return steps;}
   function spawnSpallFragments(target,origin,dir,trace,logs,source={kind:'armor'}){
-    source.dir=dir;const profile=spallProfile(source),baseAngle=Math.atan2(profile.center.y,profile.center.x),candidateGroup=createFragmentCandidateGroup(fragmentCollisionIndex(target.design));let generated=0;trace.stats.maxSpallConeDeg=Math.max(trace.stats.maxSpallConeDeg||0,profile.coneDeg);trace.stats.spallEnergyMJ=(trace.stats.spallEnergyMJ||0)+profile.fragmentEnergyMJ;
-    for(let i=0;i<profile.count&&trace.fragments.length<84;i++){const major=i<profile.majorCount,rank=(i+.5)/Math.max(1,profile.count),structured=(rank*2-1)*profile.cone,jitter=(traceRandom(trace)-.5)*profile.cone*.13,penScale=major?1.35+traceRandom(trace)*.42:.48+traceRandom(trace)*.48,damageScale=major?1.22+traceRandom(trace)*.34:.44+traceRandom(trace)*.5,a=baseAngle+structured+jitter,d={x:Math.cos(a),y:Math.sin(a)},energyKJ=Math.max(.1,profile.fragmentEnergyMJ*1000/Math.max(1,profile.count)),fragment={major,penetration:profile.basePen*penScale,damage:profile.baseDamage*damageScale,sourceMaterial:profile.material,weight:energyKJ};if(source.kind==='bulkhead'&&source.wall){const lined=applyBulkheadLinerToFragment(source.wall,source.point||origin,{penetration:fragment.penetration,damage:fragment.damage,energyKJ},1,trace);fragment.penetration=lined.penetration;fragment.damage=lined.damage;fragment.weight=lined.energyKJ;if(lined.captured){trace.fragments.push({x1:origin.x,y1:origin.y,x2:origin.x,y2:origin.y,major,penetration:0,endPenetration:0,damagePower:0,hitType:'liner-captured',damage:0,sourceMaterial:profile.material,coneDeg:profile.coneDeg});generated++;continue;}}const frag=traceFragmentRay(target,origin,d,fragment,trace,logs,candidateGroup);frag.coneDeg=profile.coneDeg;trace.fragments.push(frag);generated++;}
-    trace.stats.fragmentsGenerated+=generated;trace.stats.fragmentCandidateGroups=(trace.stats.fragmentCandidateGroups||0)+1;trace.stats.fragmentCandidateRays=(trace.stats.fragmentCandidateRays||0)+candidateGroup.rays;trace.stats.fragmentCandidateCellVisits=(trace.stats.fragmentCandidateCellVisits||0)+candidateGroup.cellVisits;trace.stats.fragmentCandidateCellCacheHits=(trace.stats.fragmentCandidateCellCacheHits||0)+candidateGroup.cellCacheHits;trace.stats.fragmentCandidateCellCacheMisses=(trace.stats.fragmentCandidateCellCacheMisses||0)+candidateGroup.cellCacheMisses;
+    const job=spallJobBegin(target,origin,dir,trace,logs,source);
+    if(!enqueueSecondaryDamage(job))spallJobRun(job);
+    return job;
   }
 
   function maybeSpawnBackfaceSpall(target,origin,dir,trace,logs,source){const mat=MATERIALS[source.material]||MATERIALS.armorSteel,stress=clamp01((Number(source.beforePenetration)||0)/Math.max(.001,Number(source.resistance)||1)),chance=clamp01((stress-.58)*1.05*(mat.backfaceSpall||1));if(chance<=0||traceRandom(trace)>=Math.min(.62,chance))return false;spawnSpallFragments(target,origin,dir,trace,logs,{...source,nonPenetration:true,afterPenetration:0,depositedMJ:Math.max(.02,(Number(source.depositedMJ)||0)*(.28+.22*stress)),spallScale:(Number(source.spallScale)||1)*.72});logs.push(`${mat.label} 후면 박리`);return true;}
@@ -6960,7 +7007,7 @@ function pointInsideSensorSegment(sensor,seg,px,py){const dx=px-sensor.cx,dy=py-
       for(const m of refreshModuleHardwareCache(s).burningModules){if(m.hp<=0||m.burning<=0)continue;const before=m.hp,beforeBurning=!!(m.burning>0||m.thermalRunaway);m.burning=Math.max(0,m.burning-dt*.035);m.hp=Math.max(0,m.hp-m.burning*2.1*dt);const destroyed=before>0&&m.hp<=0,burningChanged=beforeBurning!==!!(m.burning>0||m.thermalRunaway);if(m.hp!==before||burningChanged)markModuleHardwareDirty(s,m,{shieldHardware:moduleHasCapability(m,'shieldGenerator'),render:destroyed,rcsGeometry:destroyed});const bx=Math.floor((m.sx+m.sw/2)/SUBDIV),by=Math.floor((m.sy+m.sh/2)/SUBDIV);damageFrame(s,bx,by,m.burning*.65*dt,[]);}
       s.hitFlash=Math.max(0,s.hitFlash-dt);if(Array.isArray(s.recentHits)){for(const h of s.recentHits)h.t-=dt;s.recentHits=s.recentHits.filter(h=>h.t>0);}if(Array.isArray(s.combatTraces)){for(const tr of s.combatTraces)tr.t-=dt;s.combatTraces=s.combatTraces.filter(tr=>tr.t>0);}if(Array.isArray(s.thermalPipeBreaks)){for(const br of s.thermalPipeBreaks)br.t-=dt;s.thermalPipeBreaks=s.thermalPipeBreaks.filter(br=>br.t>0);}evaluateShip(s);
     }
-    updateProjectiles(dt);for(const s of ships)updateTurrets(s,dt);updateHUD();
+    updateProjectiles(dt);drainSecondaryDamage();for(const s of ships)updateTurrets(s,dt);updateHUD();
   }
 
   function getCameraBase(){
@@ -8034,6 +8081,70 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   // PERF-1단계 회귀: 2차 피해를 프레임에 걸쳐 미루기 전에, 피격의 무작위성이 '언제 계산되는지'와
   // 무관해야 한다. 같은 시드면 같은 파편이 나오고, 그 사이 전역 Math.random()을 아무리 불러도
   // 결과가 흔들리지 않으며, 반대로 피격이 전역 난수 순서를 소비하지도 않아야 한다.
+  // PERF-2단계 회귀: 파편을 여러 프레임에 나눠 계산해도 결과가 즉시 계산과 완전히 같아야 한다.
+  // 같은 설계의 함선 두 척에 같은 시드로 각각 즉시/지연 처리를 돌려 파편을 통째로 비교한다.
+  window.__SPACEFRAME_SECONDARY_QUEUE_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail}),oldBattle=battle;try{
+    const mkTrace=(seed)=>({impactSeed:seed,rng:makeImpactRng(seed),armorPassM:0,entries:[],fragments:[],
+      stats:{fragmentWallCandidates:0,fragmentModuleCandidates:0,fragmentBlocked:0,fragmentBulkheadPenetrations:0,fragmentDamage:0,moduleHits:0,bulkheadDestroyed:0,linerAbsorbedKJ:0,linerCaptured:0,fragmentsGenerated:0,maxSpallConeDeg:0,spallEnergyMJ:0}});
+    const src=()=>({kind:'armor',material:'armorSteel',depositedMJ:11,beforePenetration:210,resistance:130});
+    const dir={x:1,y:0},sig=t=>t.fragments.map(f=>[f.x1,f.y1,f.x2,f.y2,f.penetration,f.endPenetration,f.damage,f.hitType,f.coneDeg].join(',')).join('|');
+    const mkQueue=()=>({jobs:[],queued:0,completed:0,spilled:0,steps:0});
+
+    // A) 즉시 계산 — 큐가 없으면 spawnSpallFragments가 그 자리에서 끝낸다.
+    const shipA=createShip('sq-a','SQ A',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipA],time:0,_impactSeq:0};
+    const originA={x:shipA.comX*SUBDIV,y:shipA.comY*SUBDIV},tA=mkTrace(9090);
+    spawnSpallFragments(shipA,originA,dir,tA,[],src());
+    check('without-queue-spall-completes-immediately',tA.fragments.length>0&&tA.stats.fragmentsGenerated===tA.fragments.length,{n:tA.fragments.length});
+
+    // B) 큐 + 예산 0 — 한 번 소진할 때마다 파편 1발씩만 전진해야 한다.
+    const shipB=createShip('sq-b','SQ B',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipB],time:0,_impactSeq:0,_secondary:mkQueue()};
+    const originB={x:shipB.comX*SUBDIV,y:shipB.comY*SUBDIV},tB=mkTrace(9090);
+    spawnSpallFragments(shipB,originB,dir,tB,[],src());
+    check('queued-spall-does-not-compute-on-the-impact-frame',battle._secondary.jobs.length===1&&tB.fragments.length===0,{queued:battle._secondary.jobs.length,frags:tB.fragments.length});
+    let drains=0;while(battle._secondary.jobs.length&&drains<400){drainSecondaryDamage(0);drains++;}
+    check('zero-budget-still-makes-forward-progress',drains>1&&battle._secondary.jobs.length===0,{drains});
+    check('deferred-result-is-identical-to-immediate',sig(tA)===sig(tB)&&tA.fragments.length===tB.fragments.length,{immediate:tA.fragments.length,deferred:tB.fragments.length,same:sig(tA)===sig(tB)});
+    check('deferred-stats-match-immediate',tB.stats.fragmentsGenerated===tA.stats.fragmentsGenerated&&Math.abs(tB.stats.spallEnergyMJ-tA.stats.spallEnergyMJ)<1e-9,{a:tA.stats.fragmentsGenerated,b:tB.stats.fragmentsGenerated});
+
+    // C) 넉넉한 예산이면 한 번에 끝난다.
+    const shipC=createShip('sq-c','SQ C',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipC],time:0,_impactSeq:0,_secondary:mkQueue()};
+    const tC=mkTrace(9090);spawnSpallFragments(shipC,{x:shipC.comX*SUBDIV,y:shipC.comY*SUBDIV},dir,tC,[],src());
+    drainSecondaryDamage(1000);
+    check('generous-budget-drains-in-one-pass',battle._secondary.jobs.length===0&&sig(tC)===sig(tA),{frags:tC.fragments.length});
+
+    // D) 같은 trace가 낳은 job들은 rng 스트림을 공유한다 — FIFO를 안 지키면 난수 순서가 어긋난다.
+    const shipD=createShip('sq-d','SQ D',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipD],time:0,_impactSeq:0};
+    const oD={x:shipD.comX*SUBDIV,y:shipD.comY*SUBDIV},tD=mkTrace(5150);
+    spawnSpallFragments(shipD,oD,dir,tD,[],src());spawnSpallFragments(shipD,oD,dir,tD,[],src());
+    const shipE=createShip('sq-e','SQ E',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipE],time:0,_impactSeq:0,_secondary:mkQueue()};
+    const oE={x:shipE.comX*SUBDIV,y:shipE.comY*SUBDIV},tE=mkTrace(5150);
+    spawnSpallFragments(shipE,oE,dir,tE,[],src());spawnSpallFragments(shipE,oE,dir,tE,[],src());
+    let d2=0;while(battle._secondary.jobs.length&&d2<800){drainSecondaryDamage(0);d2++;}
+    check('multiple-jobs-on-one-trace-keep-fifo-order',sig(tD)===sig(tE)&&tE.fragments.length===tD.fragments.length,{immediate:tD.fragments.length,deferred:tE.fragments.length});
+
+    // E) 큐 상한 — 넘치면 가장 오래된 것부터 즉시 소진해 무한 성장을 막는다.
+    const shipF=createShip('sq-f','SQ F',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipF],time:0,_impactSeq:0,_secondary:mkQueue()};
+    const oF={x:shipF.comX*SUBDIV,y:shipF.comY*SUBDIV};
+    for(let i=0;i<SECONDARY_DAMAGE_CONFIG.maxJobs+4;i++)spawnSpallFragments(shipF,oF,dir,mkTrace(1000+i),[],src());
+    check('queue-length-is-bounded',battle._secondary.jobs.length<=SECONDARY_DAMAGE_CONFIG.maxJobs&&battle._secondary.spilled>=4,{len:battle._secondary.jobs.length,cap:SECONDARY_DAMAGE_CONFIG.maxJobs,spilled:battle._secondary.spilled});
+
+    // F) 표적이 파괴돼도 남은 파편은 계속 처리한다(사용자 결정).
+    const shipG=createShip('sq-g','SQ G',defaultDesign(),0,0,0,'enemy');
+    battle={player:null,enemies:[shipG],time:0,_impactSeq:0,_secondary:mkQueue()};
+    const tG=mkTrace(7788);spawnSpallFragments(shipG,{x:shipG.comX*SUBDIV,y:shipG.comY*SUBDIV},dir,tG,[],src());
+    shipG.alive=false;let threw=null;try{drainSecondaryDamage(1000);}catch(e){threw=String(e);}
+    check('destroyed-target-still-drains-its-queue',!threw&&battle._secondary.jobs.length===0&&tG.fragments.length>0,{error:threw,frags:tG.fragments.length});
+
+    // 전투 시작이 큐를 만드는지 — 이게 없으면 게임에서는 지연이 아예 안 걸린다.
+    check('battle-start-creates-the-queue',startBattle.toString().includes('_secondary:{jobs:[]')&&updateBattle.toString().includes('drainSecondaryDamage()'),{});
+    battle=oldBattle;}catch(error){battle=oldBattle;check('runtime',false,{error:String(error?.stack||error)});}
+    return {version:'1.31.36',model:'secondary-damage-queue-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_IMPACT_DETERMINISM_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
     const r1=makeImpactRng(12345),r2=makeImpactRng(12345),r3=makeImpactRng(12346);
     const a=Array.from({length:8},()=>r1()),b=Array.from({length:8},()=>r2()),c=Array.from({length:8},()=>r3());
