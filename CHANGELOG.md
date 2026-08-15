@@ -5,7 +5,7 @@
 유지하며 갱신한다.
 
 기준 파일은 저장소 최상위의 `Spaceframe_v<버전>.html` 하나다(현재
-`Spaceframe_v1.31.36.html`). 버전명은 파일 내 `<title>`의 프로토타입
+`Spaceframe_v1.31.37.html`). 버전명은 파일 내 `<title>`의 프로토타입
 번호를 따른다.
 
 ---
@@ -13,6 +13,169 @@
 ## [Unreleased]
 
 아직 없음.
+
+---
+
+## [1.31.37] — 2026-08-15
+
+기준: v1.31.36 · tag `v1.31.37` · 실행 파일 `Spaceframe_v1.31.37.html`
+
+1.31.36이 전투 프레임 저하와 테스트 기반을 정리한 성능 릴리스였다면, 이번 버전은
+다시 **설계 작업 흐름·함재 미사일·RAM/주파수 RCS·관통/2차 피해 물리**를 한꺼번에
+확장한다. 첫 4연장 함재 미사일 발사대와 전용 MFC가 실제 전투 루프에 연결되고,
+장갑 바깥의 RAM 표면처리가 주파수별 RCS와 EO 대비에 들어간다. 동시에 운동탄·미사일
+관통을 하나의 동적 모델로 통합하고 APHE와 초고속 충돌 후방효과까지 같은 피해 경로에
+올렸다.
+
+### 추가
+
+- **설계 도구 3개 탭.** 하단 도구를 `기초 / 무장 / 고급`으로 분리했다.
+  `기초`는 함체·장갑·격벽·반응로·엔진·RCS·캐패시터·보호막,
+  `무장`은 함체 고정무장·포탑·미사일 발사대·캐패시터·탄약고·FCS,
+  `고급`은 IR/EO·레이더·RAM·ESM·센서 통합·FCS·열관리 장비를 보여준다.
+  캐패시터/FCS처럼 역할이 겹치는 장비는 여러 탭에 나타나지만, 무장·포탑·발사대·
+  탄약고는 무장 탭에만 둔다.
+- **4연장 발사대.** `missile-launcher-quad-arh40`을 추가했다. 5×1m, 1m 두께의
+  고정식 2×2 캐니스터 4셀 구조이며 기본 40km급 ARH 미사일 4발을 통합 탑재한다.
+  전면 도어는 발사축 기준 외피에서 최대 1.25m까지 후퇴 설치할 수 있다.
+- **모바일 미사일 발사대 배치 계약.** 긴 발사대를 배치할 때 첫 탭은 ghost를
+  주차하고, 빈 화면 드래그는 계속 카메라 이동으로 사용한다. ghost 자체를 드래그해
+  재배치하고 나중에 ghost를 탭해야 실제 설치되므로 터치 환경에서 화면 이동과 설치가
+  충돌하지 않는다.
+- **미사일 탑재 편집기.** 설치된 발사대 정보창에서 호환 미사일 프로필과 실제 탑재
+  수량을 선택할 수 있다. 선택한 `missileProfileId`, 잔탄, MFC 자동/수동 연결 상태가
+  설계 저장에 포함되고 대칭 편집 시 반대편 발사대에도 같은 탑재안이 적용된다.
+- **MFC-1-582A 미사일 사격통제 노드.** 탄도 FCS와 미사일 FCS의 역할을 제품 프로필
+  수준에서 분리했다. MFC는 함선 공용 센서 트랙을 받아 ARH 발사해와 DL/INS 중간유도
+  패킷을 만들며 최대 8개의 ARH DL 채널, 10Hz 갱신을 제공한다. 레이더 장착 여부와
+  독립적으로 EO/LRF 등 유효한 정밀 트랙도 사용할 수 있다.
+- **40km급 ARH 미사일 물리체.** 포탄 배열과 분리된 독립 rigid-body 비행체를 추가했다.
+  280kg 발사질량, 4.2m × 0.28m 몸체에 95kN/2.2s 고체 부스터, 14kN급 4분할
+  multi-pulse sustain, TVC·자세 RCS·DACS를 사용한다. 각 추진계는 실제 추진제 질량을
+  소비하며 질량·관성도 비행 중 갱신된다.
+- **미사일 유도/시커.** PN 기반 요격 유도, 함선 sensor track을 복사한 DL packet,
+  packet 사이 INS coast, 링크 상실 coast, X-band 능동 레이더 시커의 SEARCH/TRACK/
+  COAST/LOST와 datalink → ARH handoff를 구현했다. 미사일 guidance가 표적의 실제
+  truth 좌표·속도를 직접 읽어 넣는 경로는 사용하지 않는다.
+- **미사일 발사 모드.** 정밀 ranged track과 작동 중 MFC가 있으면 `DL`로 발사한다.
+  MFC가 있으나 거리 없이 RADAR/EO/IR 방위만 있으면 발사관 이탈 후 해당 방위로 선회해
+  ARH SEARCH를 시작하는 **bearing-cued MAD**를 사용한다. MFC가 없거나 파괴되면
+  센서 cue가 차단되고 발사관 축 방향 **MAD DOG**만 허용된다. HUD 표기는 `DL / MAD`
+  두 상태로 단순화했다.
+- **전술맵 자함 미사일 텔레메트리.** 자함이 발사한 미사일만 전술 그림에 표시한다.
+  적 미사일은 향후 센서 접촉 계층을 거쳐야 하며 enemy missile truth를 UI에 직접
+  그리지 않는다.
+- **미사일 관통 HE-FRAG 탄두.** 18kg `military-he-standard` 작약과 40kg 케이싱을
+  사용하는 관통형 탄두를 추가했다. 안전분리 시간/거리는 폭발 신관만 억제하며,
+  너무 가까이 충돌해도 미사일 몸체의 실제 운동 충돌은 그대로 발생한다.
+- **범용 광대역 RAM 패널.** 장갑 `layers[]`와 분리된 surface treatment 레지스트리를
+  추가했다. 현재 MGI 범용 RAM은 12mm 기준 25kg/m² · 45kCr/m²이며 5~20mm 두께를
+  지원한다. X/Ku 부근에서 흡수가 가장 강하고 저주파·초고주파로 갈수록 약해진다.
+- **RAM 설치/제거·손상.** 외장 장갑 최외곽에 구간 단위로 RAM을 설치/제거할 수 있다.
+  RAM은 자체 질량·가격·미약한 물리 저항과 damage cells를 가지며, 국부 파손된 면은
+  원래 장갑의 RCS/가시광 특성으로 돌아간다.
+- **RCS 주파수 응답.** S/X/Ku/Ka/W 밴드 레지스트리와 실제 Hz 기반 연속 응답 모델을
+  추가했다. 3.0GHz에서는 1.31.36 방향별 RCS를 정확히 보존하고, 다른 주파수에서는
+  diffuse/specular/edge/module 성분을 각각 log-frequency 보간한다. 밴드 경계에
+  RCS가 계단식으로 튀지 않는다.
+- **RCS 주파수 분석 UI.** 설계 CS/RCS 오버레이에 0.1~300GHz 분석 슬라이더, 대역
+  바로가기와 방향별 주파수 곡선을 추가했다. 300GHz는 엔진 하드 상한이 아니며
+  검증 범위를 벗어난 요청은 끝점 응답을 유지해 외삽 폭주를 막는다.
+- **150mm APHE.** 52kg 관통체·2,040m/s의 150mm 철갑고폭탄을 추가했다. 단일
+  접촉 저항이 100mm RHAe 이상이면 신관이 무장되고 0.9ms 뒤 폭발한다. 7kg 작약과
+  45kg 케이싱 파편은 탄체의 잔존 전진속도와 방사 속도를 벡터 합성한다.
+
+### 변경
+
+- **운동탄 관통을 authoritative 동적 모델로 통합.** Tungsten sabot, 60mm APFSDS,
+  150mm APHE, VHI 132mm HVAP, HPS 220mm hypervelocity penetrator와 미사일 관통체가
+  같은 `penetration family + material + shape + geometry + current impact state`
+  경로를 사용한다. 고정 관통 mm를 런타임 판정값으로 저장하지 않으며 UI의 기준 RHAe도
+  같은 모델을 표준 조건에서 계산한다.
+- **관통 형상/재질 계약.** Long-rod, full-bore, composite-core, hypervelocity,
+  penetrating-body 계열을 분리하고 `normalPenetrationFactor`, 경사 유지력, bite,
+  ricochet resistance, normalization, tip erosion/hypervelocity retention 등을
+  실제 관통부 형상에 둔다.
+- **HVAP/APCR 코어·캐리어 분리.** 비행과 보호막 충돌에서는 완성탄 질량/외경을 쓰지만
+  장갑 관통은 작은 고밀도 코어가 담당한다. 첫 관통 뒤 캐리어는 코어에 붙어 남는 질량,
+  후방 debris, 전면에서 탈락한 질량으로 분리되며 다음 구조물 관통은 남은 상태에서
+  다시 계산한다.
+- **초고속 충돌 후방효과.** Hypervelocity 탄의 관통 깊이와 주변 피해를 분리했다.
+  대표 파편 ray 수를 늘리지 않고 충돌 과정에서 침적된 운동에너지에 따라 각 ray가
+  대표하는 debris cloud의 에너지와 피해 상한을 키운다.
+- **진공 파편 운동 계약.** 대표 파편 ray를 무조건 14m에서 삭제하던 하드캡을 제거했다.
+  진공 비행 자체로 에너지/속도를 잃지 않고, 격벽·모듈·라이너 등 실제 물체와 충돌할 때만
+  감소한다. 함체를 빠져나가거나 유효 에너지/속도 이하가 되면 종료한다.
+- **FCS 자동사격 신뢰도.** 전투가 2D 평면이고 투사체 분산도 하나의 횡방향 각도
+  Gaussian이므로, 기존 2D 원형 radial CDF 대신 **1D lateral Gaussian가 표적 반폭
+  안에 들어올 확률**을 사용한다.
+- **탄종 변경 공통 계약.** 플레이어와 AI가 같은 `setWeaponGroupAmmo()` 경로를 사용하며
+  탄종 변경 시 3.8초 그룹 재장전을 시작하고 기존 FCS 해를 즉시 폐기한다. AI는 관측된
+  BDA를 바탕으로 150mm sabot/APHE를 시험·전환하고 비관통이 관측되면 다시 전환할 수 있다.
+- **RAM 광학 저감과 geometric CS 분리.** 현재 RAM의 가시광 대비 저감은 두께와 무관한
+  제품 특성으로 취급하고, geometric cross-section 자체는 바꾸지 않는다. RAM 손상이
+  생긴 면적만 광학 저감 효과가 사라진다.
+- 레이더 카탈로그와 전술 레이더 UI가 실제 운용 주파수, S-band 분류, 파장과 beam별
+  현재 RF 정보를 더 직접적으로 표시한다.
+
+### 수정
+
+- **미사일 물리 WIP14/WIP15의 썩은 단계명 단언 2건.** 실제 TVC/RCS와 multi-pulse
+  동작은 정상인데 테스트가 `profile.status`의 과거 개발단계 문자열을 하드코딩하고 있어
+  후속 WIP21/25 상태명으로 바뀐 뒤 실패했다. 단계 이름을 검사하지 않고 실제 추진·자세제어
+  프로필 계약과 동작을 보도록 교체했다.
+- **미사일 발사대 모바일 배치 충돌.** 긴 launcher ghost가 존재할 때도 빈 화면 드래그는
+  카메라 팬으로 유지하고, ghost 위에서만 재배치/확정 제스처를 받도록 분리했다.
+- **탄속이 다른 탄종 전환 뒤 낡은 FCS 해가 남을 수 있던 경로.** 탄종 변경 진입점에서
+  해당 무장 그룹의 사격해와 타이머를 폐기하도록 통일했다.
+
+### 저장 호환
+
+- 설계 저장 스키마를 **39 → 42**로 올렸다.
+- 미사일 발사대에 `missileProfileId`, `missileRounds`, `missileFcsLinkMode`,
+  `missileFcsModuleId`를 저장한다.
+- FCS 모듈은 `fcsProfileId`로 탄도 FCS와 MFC 제품 역할을 구분한다. 해당 필드가 없는
+  구형 FCS는 로드 시 기존 탄도 FCS로 복원된다.
+- RAM은 장갑 wall의 `surfaceTreatment`에 제품 ID, 두께와 damage cells를 저장한다.
+  장갑 본체의 `layers[]`와는 별도 계약이다.
+- 기존 1.31.36/스키마 39 설계에는 위 신규 필드가 없으므로 기존 모듈과 장갑은 그대로
+  복원되며, 새 미사일 발사대·MFC·RAM은 자동으로 추가하지 않는다.
+- 반대로 1.31.37에서 새 프로필/표면처리를 사용한 설계를 1.31.36으로 다시 여는 것은
+  호환 대상으로 보장하지 않는다.
+
+### 검증
+
+- JavaScript syntax **PASS**.
+- 정식 파일 표시를 `SPACEFRAME GRID PROTOTYPE 1.31.37` / `PROTO 1.31.37`로 확인했다.
+- 페이지에 `window.__SPACEFRAME_*_TEST__` 형식의 자체 하네스가 **118개** 노출된다
+  (v1.31.36의 85개에서 33개 증가).
+- 신규 33개 하네스 **424/424 PASS**. 설계 탭/미사일 적재, 미사일 발사대·MFC·
+  rigid-body/추진/유도/시커/탄두, RAM/RCS 주파수, APHE, authoritative penetration,
+  초고속 피해와 진공 파편 계약을 포함한다.
+- 추가 영향권 회귀 **496/496 PASS**: Product Metadata 118/118, Registry 88/88,
+  REG-F 54/54, REG-G 45/45, System Adapter 37/37, Sensor-FCS A1 12/12,
+  Sensor-FCS B1 11/11, EO/BDA 9/9, Radar Physics 13/13, Radar-FCS 9/9,
+  Power Foundation 7/7, Power Balance 10/10, Mass Balance 8/8,
+  Price Integration 9/9, Ship Cost 4/4, Product Naming 33/33,
+  Company DB 6/6, UI-I1 11/11, Catalog Readability 4/4, RCS Edge 5/5,
+  Storage Codec 3/3.
+- 정식 승격 대상 신규/영향권 검증 합계 **920/920 PASS**.
+- 위 브라우저 검증에서 page error **0**, console error **0**.
+- IndexedDB 전체 보관함 하네스는 이 검증 환경의 `set_content` 보안 컨텍스트에서
+  IndexedDB 접근이 차단되어 합계에서 제외했다. 스키마/직렬화 계약과 Storage Codec은
+  별도 회귀에서 통과했다.
+
+### 알려진 제한
+
+- 현재 함재 미사일 제품은 40km급 ARH 프로토타입 한 종류이며 발사대도 4연장 고정식
+  제품 하나뿐이다. 전투 중 재장전과 외부 탄약고 급탄은 없다.
+- MFC는 ARH DL 최대 8발과 SARH 예약 채널 계약을 갖지만 현재 실제 미사일은 ARH 하나다.
+- bearing-cued MAD는 RADAR/EO/IR 방위만 초기 cue로 사용한다. ESM-only 접촉을
+  미사일 수동 cue로 사용하는 계약은 아직 만들지 않았다.
+- RAM 제품은 현재 MGI 범용 광대역 한 종류다. 0.1~300GHz는 현재 검증/시각화 범위이며
+  그 밖의 주파수는 끝점 응답을 유지하는 근사다.
+- RCS 주파수 모델은 full-wave EM 해석기가 아니라 기존 방향별 equivalent RCS를
+  주파수별 산란 성분 응답으로 확장한 게임 수준 모델이다.
 
 ---
 
