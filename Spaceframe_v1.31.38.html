@@ -12950,10 +12950,14 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
           tr.radarBearingRad=Math.atan2(by,bx);tr.radarRangeM=Math.hypot(bx,by);
           tr.radarFixX=tgt.x;tr.radarFixY=tgt.y;tr.estimatedX=tgt.x;tr.estimatedY=tgt.y;tr.rangeKnown=true;
           const entered=radarEnterStt(sh,tgt.id,battle.time);
-          for(let i=0;i<40;i++){battle.time+=.05;advanceRadarScheduler(sh,.05,battle.time);}
+          // STT를 유지한 채 표본을 떠야 한다. 트랙을 갱신하지 않고 시간을 돌리면 staleness로
+          // STT에서 빠져나가고, 그러면 SEARCH 상태를 STT라고 착각해 비교가 뒤집힌다.
+          for(let i=0;i<40;i++){battle.time+=.05;tr._radarMeasurementAtS=battle.time;tr.radarLastSeenS=0;tr.radarCoastS=0;advanceRadarScheduler(sh,.05,battle.time);}
+          const comp=sh.radarComposite||radarCompositeState(sh),modes=(comp.activeBeams||[]).map(b=>b.mode);
           const stt=emContinuousMWByBand(sh).radar;
-          sttEmissionDetail={entered,search,stt};
-          return entered===true&&search>0&&stt>search;
+          sttEmissionDetail={entered,search,stt,modes};
+          // duty 비(STT .21 / SEARCH .15)에서 나오는 상승분을 본다. 1.5배 고정은 애초에 달성 불가였다.
+          return entered===true&&search>0&&modes.includes('STT')&&stt>search*1.1;
         }finally{battle=prev;}
       })(),sttEmissionDetail);
       check('enemy-esm-classifies-the-radar-band',(()=>{
