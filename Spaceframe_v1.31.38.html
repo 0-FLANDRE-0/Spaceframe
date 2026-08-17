@@ -12930,13 +12930,32 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
         const heardM=scale*Math.sqrt(Math.max(0,shipEmEmission(sh,0).totalMW/floor-1));
         return heardM>seesM*1.5;
       })(),{});
+      // 방출은 이제 radarRfEmissionSummary의 실제 빔/RF 상태에서 나온다. 가짜 트랙을 꽂고
+      // modeAtS를 뒤집는 옛 방식으로는 모드가 안 바뀐다 — SEARCH와 STT가 같은 값(311.14MW)이 나왔다.
+      // 실제 스케줄러를 돌리고 실제 STT 진입 API를 통과시켜 비교한다.
+      let sttEmissionDetail={};
       check('stt-is-louder-than-search',(()=>{
-        const sh=radarShip();radarSystemState(sh).modeAtS=-1;
-        const search=emContinuousMWByBand(sh).radar;
-        sh.sensorTracks={x:{radarIlluminated:true}};radarSystemState(sh).modeAtS=-1;
-        const stt=emContinuousMWByBand(sh).radar;
-        return stt>search*1.5;
-      })(),{});
+        const sh=radarShip(),tgt=mkShip('rs-stt-tgt',{},6000,0,'enemy');
+        const prev=battle;battle={player:sh,enemies:[tgt],time:5};
+        try{
+          for(let i=0;i<40;i++){battle.time+=.05;advanceRadarScheduler(sh,.05,battle.time);}
+          const search=emContinuousMWByBand(sh).radar;
+          const tr=createSensorTrack(sh,tgt);sh.sensorTracks={[tgt.id]:tr};
+          tr.radarDetected=true;tr.radarFix=true;tr.radarTrackClass='STT';tr.radarTrackQuality=.9;
+          tr.radarHits=3;tr.radarCoastS=.02;tr.radarLastSeenS=.02;tr._radarMeasurementAtS=battle.time;
+          // radarEnterStt는 트랙에서 유한한 추정 방위를 얻지 못하면 그대로 거부한다.
+          // radarTrackEstimatedBearing은 radarBearingRad와 함께 radarDetectQuality>.03을 요구한다.
+          const bx=tgt.x-sh.x,by=tgt.y-sh.y;
+          tr.radarDetectQuality=.9;
+          tr.radarBearingRad=Math.atan2(by,bx);tr.radarRangeM=Math.hypot(bx,by);
+          tr.radarFixX=tgt.x;tr.radarFixY=tgt.y;tr.estimatedX=tgt.x;tr.estimatedY=tgt.y;tr.rangeKnown=true;
+          const entered=radarEnterStt(sh,tgt.id,battle.time);
+          for(let i=0;i<40;i++){battle.time+=.05;advanceRadarScheduler(sh,.05,battle.time);}
+          const stt=emContinuousMWByBand(sh).radar;
+          sttEmissionDetail={entered,search,stt};
+          return entered===true&&search>0&&stt>search;
+        }finally{battle=prev;}
+      })(),sttEmissionDetail);
       check('enemy-esm-classifies-the-radar-band',(()=>{
         const sh=radarShip(),foe=mkShip('foe',{esm:true},150000,0,Math.PI,'enemy');
         battle={player:sh,enemies:[foe],time:0};
@@ -12969,7 +12988,10 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
         return esmOnly.rangeKnown===false&&trackFireReady({trackRequirements:{bearing:0,velocity:0,range:0}},esmOnly)===false;
       })(),{});
       // ── EW-S0: 이음매는 존재하되 어떤 계산도 바꾸지 않아야 한다 ──────
-      check('ew-is-declared-but-disabled',EW_CONFIG.enabled===false&&EW_NONE.active===false&&shipEwEmission(radarShip()).active===false,{});
+      // 1.31.29에서 ECM 뼈대를 넣을 때 '선언만 하고 동작은 비워둔다'를 비트 단위로 잠가뒀는데,
+      // 1.31.38에서 실제로 구현되면서 그 잠금이 제 역할을 하고 봉인이 열렸음을 보고했다.
+      // 이제 의미 있는 계약은 '켜져 있되 재머가 없으면 아무것도 방출하지 않는다'이다.
+      check('ew-is-enabled-and-inert-without-a-jammer',EW_CONFIG.enabled===true&&EW_NONE.active===false&&shipEwEmission(radarShip()).active===false,{enabled:EW_CONFIG.enabled,none:EW_NONE.active});
       check('jamming-state-is-always-none-today',(()=>{
         const a=radarShip(),b=plainTarget(90000);
         return radarJammingState(a,b)===EW_NONE&&radarBurnThroughRangeM(radarJammingState(a,b))===null;
@@ -13462,16 +13484,42 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
 
   window.__SPACEFRAME_MISSILE_PHYS_WIP16_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
     const profile=missileRigidBodyProfile('arh-40k-prototype-body'),cfg=profile?.propulsion?.dacs||{};
-    check('dacs-profile-contract',cfg.type==='divert-attitude-control-system'&&cfg.propMassKg===13&&cfg.maxLateralThrustN===30000&&cfg.ispS===350,{cfg});
-    const fresh=createMissileRigidBody(profile.id,{vx:1000,vy:0,angle:0}),dv0=missileDacsRemainingDeltaVMps(fresh);check('dacs-launch-mass-is-allocated',Math.abs(fresh.propulsion.dacs.propRemainingKg-13)<1e-9&&Math.abs(fresh.massKg-280)<1e-9&&dv0>150&&dv0<180,{prop:fresh.propulsion.dacs.propRemainingKg,mass:fresh.massKg,dv0});
+    // 사양 수치를 못 박으면 재조정 때마다 썩는다(13kg/30kN/350s -> 17kg/40kN/285s가 그랬다).
+    // 형태와 물리적 타당 범위만 본다 — 값이 바뀌어도 통과하고, 계약이 깨지면 실패한다.
+    check('dacs-profile-contract',cfg.type==='divert-attitude-control-system'&&cfg.propMassKg>0&&cfg.maxLateralThrustN>0&&cfg.ispS>50&&cfg.ispS<600&&Number.isFinite(cfg.commandSlewPerS)&&cfg.commandSlewPerS>0&&Number.isFinite(cfg.actuatorTauS)&&cfg.actuatorTauS>0,{cfg});
+    // 발사 시 DACS 추진제는 프로파일 값 그대로 실려 있고, 질량은 발사질량이어야 한다.
+    // dv0는 그 두 값에서 로켓 방정식으로 유도해 비교한다 — 사양이 바뀌어도 관계는 유지된다.
+    const fresh=createMissileRigidBody(profile.id,{vx:1000,vy:0,angle:0}),dv0=missileDacsRemainingDeltaVMps(fresh);
+    const dvIdeal=(m0,prop,isp)=>isp*9.80665*Math.log(m0/Math.max(1e-6,m0-prop));
+    const dv0Expected=dvIdeal(profile.physical.launchMassKg,cfg.propMassKg,cfg.ispS);
+    check('dacs-launch-mass-is-allocated',Math.abs(fresh.propulsion.dacs.propRemainingKg-cfg.propMassKg)<1e-9&&Math.abs(fresh.massKg-profile.physical.launchMassKg)<1e-9&&Math.abs(dv0-dv0Expected)<1,{prop:fresh.propulsion.dacs.propRemainingKg,mass:fresh.massKg,dv0,dv0Expected});
     const coast=createMissileRigidBody(profile.id,{vx:1000,vy:0,angle:0});const w0=coast.angVel,m0=coast.massKg;missileSetDacsCommand(coast,1);for(let i=0;i<40;i++){const dt=.01;missileUpdateDacs(coast,dt);integrateMissileRigidBody(coast,dt);}check('dacs-produces-direct-lateral-delta-v',coast.vy>35&&Math.abs(coast.vx-1000)<1e-9,{vx:coast.vx,vy:coast.vy});
     check('dacs-through-cg-produces-no-torque',Math.abs(coast.angVel-w0)<1e-12&&Math.abs(coast.angAccel)<1e-12,{omega:coast.angVel,alpha:coast.angAccel});
     check('dacs-consumes-real-propellant-and-mass',coast.propulsion.dacs.propRemainingKg<13&&coast.massKg<m0,{remaining:coast.propulsion.dacs.propRemainingKg,mass0:m0,mass:coast.massKg});
     const left=createMissileRigidBody(profile.id,{vx:800,angle:Math.PI/2});missileSetDacsCommand(left,-1);for(let i=0;i<20;i++){missileUpdateDacs(left,.01);integrateMissileRigidBody(left,.01);}check('dacs-force-follows-body-lateral-axis',left.vx>800&&Math.abs(left.vy)<1e-7,{vx:left.vx,vy:left.vy,angle:left.angle});
     const empty=createMissileRigidBody(profile.id);empty.propulsion.dacs.propRemainingKg=0;missileSetDacsCommand(empty,1);missileUpdateDacs(empty,.1);integrateMissileRigidBody(empty,.1);check('empty-dacs-cannot-generate-force',Math.abs(empty.vx)<1e-12&&Math.abs(empty.vy)<1e-12&&empty.propulsion.dacs.currentLateralThrustN===0,{vx:empty.vx,vy:empty.vy,thrust:empty.propulsion.dacs.currentLateralThrustN});
-    const full=createMissileRigidBody(profile.id,{vx:0,vy:0,angle:0});full.massKg=177;full.propulsion.boost.status='burnout';full.propulsion.boost.propRemainingKg=0;for(const p of full.propulsion.sustain.pulses){p.status='burnout';p.propRemainingKg=0;}missileRefreshMassProperties(full);const startMass=full.massKg,startDv=missileDacsRemainingDeltaVMps(full);check('terminal-dacs-reserve-is-about-260mps',startDv>245&&startDv<275,{startDv,startMass});missileSetDacsCommand(full,1);let guard=0;while(full.propulsion.dacs.propRemainingKg>1e-9&&guard++<10000){missileUpdateDacs(full,.005);integrateMissileRigidBody(full,.005);}const achieved=Math.abs(full.vy);check('dacs-full-burn-consumes-exact-budget',Math.abs((startMass-full.massKg)-13)<1e-5&&full.propulsion.dacs.propRemainingKg===0,{massUsed:startMass-full.massKg,guard});
-    check('dacs-full-burn-delta-v-matches-rocket-equation',Math.abs(achieved-startDv)<3.0&&achieved>245&&achieved<275,{achieved,startDv});
-    const pulse=createMissileRigidBody(profile.id);missileSetDacsCommand(pulse,.5);for(let i=0;i<15;i++){missileUpdateDacs(pulse,.01);integrateMissileRigidBody(pulse,.01);}const half=Math.abs(pulse.propulsion.dacs.currentLateralThrustN);check('dacs-command-is-bounded-and-proportional',half>12000&&half<16000,{half});
+    // 주추진계를 다 쓴 종말 상태를 만든다. massKg는 반드시 '건조질량 + 남은 DACS 추진제'여야 한다 —
+    // missileRefreshMassProperties는 재계산이 아니라 [dry, launch]로 clamp만 하므로, dry 아래로 두면
+    // 추진제가 남았는데 질량은 이미 건조인 불가능한 상태가 되어 연소가 질량을 못 줄인다.
+    const full=createMissileRigidBody(profile.id,{vx:0,vy:0,angle:0});full.propulsion.boost.status='burnout';full.propulsion.boost.propRemainingKg=0;
+    for(const p of full.propulsion.sustain.pulses){p.status='burnout';p.propRemainingKg=0;}
+    full.propulsion.attitudeRcs.propRemainingKg=0;
+    full.massKg=profile.physical.dryMassKg+full.propulsion.dacs.propRemainingKg;missileRefreshMassProperties(full);
+    const startMass=full.massKg,startDv=missileDacsRemainingDeltaVMps(full),startDvExpected=dvIdeal(startMass,cfg.propMassKg,cfg.ispS);
+    check('terminal-dacs-reserve-matches-rocket-equation',Math.abs(startDv-startDvExpected)<1&&startDv>0,{startDv,startDvExpected,startMass});
+    missileSetDacsCommand(full,1);let guard=0;
+    while(full.propulsion.dacs.propRemainingKg>1e-9&&guard++<10000){missileUpdateDacs(full,.005);integrateMissileRigidBody(full,.005);}
+    const achieved=Math.abs(full.vy);
+    check('dacs-full-burn-consumes-exact-budget',Math.abs((startMass-full.massKg)-cfg.propMassKg)<1e-5&&full.propulsion.dacs.propRemainingKg===0,{massUsed:startMass-full.massKg,expected:cfg.propMassKg,guard});
+    check('dacs-full-burn-delta-v-matches-rocket-equation',Math.abs(achieved-startDv)<3.0&&achieved>0,{achieved,startDv});
+    const pulse=createMissileRigidBody(profile.id);missileSetDacsCommand(pulse,.5);for(let i=0;i<15;i++){missileUpdateDacs(pulse,.01);integrateMissileRigidBody(pulse,.01);}const half=Math.abs(pulse.propulsion.dacs.currentLateralThrustN);
+    // 최대추력에서 유도한다(옛 30kN의 절반 15kN에 고정돼 있었다). 액추에이터 지연(tau)이 있어
+    // 0.15s 구동 뒤에도 목표의 약 0.25%가 남으므로 2% 여유를 둔다. 이름대로 '경계'도 함께 본다.
+    const halfExpected=cfg.maxLateralThrustN*.5;
+    const maxed=createMissileRigidBody(profile.id);missileSetDacsCommand(maxed,5);
+    for(let i=0;i<40;i++){missileUpdateDacs(maxed,.01);integrateMissileRigidBody(maxed,.01);}
+    const capped=Math.abs(maxed.propulsion.dacs.currentLateralThrustN);
+    check('dacs-command-is-bounded-and-proportional',Math.abs(half-halfExpected)<halfExpected*.02&&capped<=cfg.maxLateralThrustN+1e-6,{half,halfExpected,capped,max:cfg.maxLateralThrustN});
     missileSetDacsCommand(pulse,5);for(let i=0;i<20;i++)missileUpdateDacs(pulse,.01);check('dacs-command-clamps-to-unit-range',pulse.propulsion.dacs.command===1&&pulse.propulsion.dacs.actualCommand<=1,{command:pulse.propulsion.dacs.command,actual:pulse.propulsion.dacs.actualCommand});
     const inert=createMissileRigidBody(profile.id,{vx:321,vy:-123,angVel:.22});for(let i=0;i<100;i++)integrateMissileRigidBody(inert,.01);check('dacs-addition-does-not-break-vacuum-inertia',Math.abs(inert.vx-321)<1e-9&&Math.abs(inert.vy+123)<1e-9&&Math.abs(inert.angVel-.22)<1e-9,{vx:inert.vx,vy:inert.vy,omega:inert.angVel});
   }catch(error){check('runtime',false,{error:String(error?.stack||error)});}return {version:'1.31.36-MISSILE-PHYS-WIP16',model:'dacs-direct-lateral-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
@@ -14279,7 +14327,7 @@ window.__SPACEFRAME_MISSILE_380KG_CALIBER_BREACH_WIP11_TEST__=()=>{
     check('380kg-mass-contract',Math.abs(ph.launchMassKg-380)<1e-9&&Math.abs(propTotal-163.8)<1e-6&&Math.abs(ph.dryMassKg-(ph.launchMassKg-propTotal))<1e-6,{launch:ph.launchMassKg,dry:ph.dryMassKg,propTotal});
     check('380mm-package-and-warhead',ph.diameterM===.38&&ph.lengthM===4.5&&ammo.caliberMm===380&&ammo.payload.explosiveMassKg===30&&ammo.penetratorMassKg===80,{physical:ph,chemicalMJ:payloadExplosiveEnergyMJ(ammo.payload)});
     check('boost-and-divert-scaled',prop.boost.thrustN===125000&&prop.dacs.maxLateralThrustN===40000&&Math.abs(prop.boost.ispS-254.92905324448208)<1e-9&&prop.dacs.ispS===285,{boost:prop.boost,dacs:prop.dacs});
-    const d=defaultDesign(),w=d.walls.find(q=>q.kind==='bulkhead');syncBulkheadWall(wall);const e=wallEndpointsSub(wall),point={x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2},ci=wallCellIndexAtPoint(w,point);w.damageCells[ci].hp=0;w._damageStatsDirty=true;syncBulkheadWall(w);
+    const d=defaultDesign(),w=d.walls.find(q=>q.kind==='bulkhead');syncBulkheadWall(w);const e=wallEndpointsSub(w),point={x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2},ci=wallCellIndexAtPoint(w,point);w.damageCells[ci].hp=0;w._damageStatsDirty=true;syncBulkheadWall(w);
     const small=caliberAwareBreachFactor(w,point,.02),large=caliberAwareBreachFactor(w,point,.70);
     check('caliber-aware-breach-discriminates-size',small.breach&&large.breach&&small.factor<large.factor&&small.clearance>large.clearance,{small,large});
     const open=wallBreachOpeningWidthM(w,point);check('destroyed-cell-has-finite-opening',open>0&&open<LOCAL_WALL_CELL_M,{open,cellM:LOCAL_WALL_CELL_M});
