@@ -5352,11 +5352,6 @@ function updateSensorSystems(ships,dt){for(const observer of ships){if(!observer
           midcourseMaxBodyRateDegS:58,
           midcourseAngleKp:1.7,
           midcourseRateTauS:.28,
-          // WIP79 종말 다이버트 교리. 종말에서 몸통을 돌려 추력 벡터를 꺾는 것은 주 모터가 탈 때만 옳다.
-          // 모터가 꺼진 종말 구간에서 같은 명령은 DACS 축(기체 +y = 기수+90도)을 요구 법선에서 떼어놓아
-          // 추진제를 진행 방향으로 낭비하게 만든다. 그래서 종말에는 기수를 속도 벡터에 붙여두고
-          // 궤도 수정을 횡추력으로만 한다 — 그리고 코스에 들어갈 때까지 가속을 죽인다.
-          terminalDivertMaxOffVelocityDeg:8,
           // WIP45: BOOST_VECTOR_CAPTURE is outside the MIDCOURSE +/-24 deg body-vector cap.
           // This limits only how quickly the launch delta-v steering command itself may move.
           boostCaptureCommandSlewDegS:120
@@ -5374,14 +5369,7 @@ function updateSensorSystems(ships,dt){for(const observer of ships){if(!observer
             highErrorMinFraction:.65,
             recoveryMinFraction:.85,
             emergencyErrorDeg:32,
-            emergencyFraction:1.0,
-            // 종말 다이버트 중에는 반대로 간다. 코스가 어긋난 상태에서 세게 가속하면 남은 비행시간만
-            // 줄어 횡수정 여유가 사라진다. 코스에 들어간 뒤에야 최대로 가속한다.
-            // 이산 스로틀 단계에 맞춰 적는다 — .15가 미세 수정, .35가 약한 수정이다.
-            // (.25로 적어도 missileSetSustainThrottleStep이 .35로 스냅해 결과가 같았다.)
-            divertOnCourseDeg:1.5,
-            divertHoldDeg:6,
-            divertGentleFraction:.35
+            emergencyFraction:1.0
           })
         }),
         dacs:Object.freeze({
@@ -6032,25 +6020,18 @@ function updateSensorSystems(ships,dt){for(const observer of ships){if(!observer
     // 몸통을 꺾어 얻을 수 있는 추력 벡터 권한보다 클 때만 다이버트가 주력이다. 횡추진제가 마르면
     // 이 부등호가 뒤집혀 기수 고정이 풀리고 종전 몸통 조향으로 되돌아간다 — 그러지 않으면
     // 다 쓴 뒤에도 기수가 속도 벡터에 묶여 아무 기동도 못 하게 된다.
-    const rcsTransState=m?.propulsion?.attitudeRcs,rcsTransReserve=clamp(Number(profile?.propulsion?.attitudeRcs?.translationReserveFraction)||0,0,.95)*Math.max(0,Number(rcsTransState?.propInitialKg)||0),lateralAuthorityN=((m?.propulsion?.dacs?.enabled&&missileDacsRemainingDeltaVMps(m)>Math.max(0,Number(cfg?.dacs?.reserveFloorMps)||0))?Math.max(0,Number(profile?.propulsion?.dacs?.maxLateralThrustN)||0):0)+((rcsTransState?.translationEnabled&&rcsTransState.propRemainingKg>rcsTransReserve+1e-10)?Math.max(0,Number(profile?.propulsion?.attitudeRcs?.maxTranslationThrustN)||0):0),lateralAuthorityAccel=lateralAuthorityN/Math.max(.001,Number(m.massKg)||.001);
-    const divertMotor=missileActiveMainMotorContext(m),divertBurnN=Math.max(0,Number(divertMotor?.effectiveThrustN ?? divertMotor?.stage?.thrustN)||0),divertReadyIdx=divertBurnN>0?-1:(m?.propulsion?.sustain?.pulses?.findIndex(q=>q.status==='ready'&&q.propRemainingKg>1e-9)??-1),divertReadyN=divertReadyIdx>=0?Math.max(0,Number(profile?.propulsion?.sustain?.pulses?.[divertReadyIdx]?.thrustN)||0):0,bodySteerAccel=Math.max(divertBurnN,divertReadyN)/Math.max(.001,Number(m.massKg)||.001);
     const prevRange=Number(g.lastGuidanceRangeM),prevAge=Number(g.lastGuidanceRangeAgeS),nowAge=Number(m.ageS)||0,rangeRate=(Number.isFinite(prevRange)&&Number.isFinite(prevAge)&&nowAge>prevAge+1e-6)?(R-prevRange)/(nowAge-prevAge):-closing;g.lastGuidanceRangeM=R;g.lastGuidanceRangeAgeS=nowAge;
     const leadTime=missileGuidanceLeadTimeS(m,t,cfg),aimX=t.x+t.vx*leadTime,aimY=t.y+t.vy*leadTime,aimAngle=Math.atan2(aimY-m.y,aimX-m.x),aimErr=normalizeAngle(aimAngle-velAngle),ag=cfg.aggressiveIntercept||{},wasRecovery=terminal&&g.interceptMode==='OVERSHOOT_RECOVERY',overshoot=terminal&&closing<(Number(ag.overshootClosingMps)||-5)&&rangeRate>(Number(ag.overshootRangeGrowthMps)||20),recoverErr=Math.max(0,Number(ag.recoverErrorDeg)||8)*Math.PI/180,recovery=terminal&&(wasRecovery?(Math.abs(aimErr)>recoverErr||closing<=0):overshoot),highError=terminal&&Math.abs(aimErr)>Math.max(0,Number(ag.highErrorDeg)||18)*Math.PI/180;g.interceptMode=recovery?'OVERSHOOT_RECOVERY':highError?'HIGH_ERROR_INTERCEPT':terminal?'APN_INTERCEPT':'MIDCOURSE_INTERCEPT';
     const N=recovery?Math.max(0,Number(ag.recoveryNavigationConstant)||6.4):terminal?Math.max(0,Number(cfg.navigationConstant)||5.2):Math.max(0,Number(pc.midcourseNavigationConstant)||3.2),pn=N*Math.max(0,recovery?Math.abs(closing):closing)*losRate,apnCfg=cfg.apn||{},targetNormalAccel=-(Number(t.ax)||0)*Math.sin(los)+(Number(t.ay)||0)*Math.cos(los),trackAge=Math.max(0,Number(t.trackAgeS)||0),accUnc=Math.max(0,Number(t.accelerationUncertaintyMps2)||0),ageMax=Math.max(.05,Number(apnCfg.maxUsableTrackAgeS)||1.5),uncFull=Math.max(0,Number(apnCfg.uncertaintyFullMps2)||12),uncCut=Math.max(uncFull+.01,Number(apnCfg.uncertaintyCutoffMps2)||90),ageReliability=1-clamp01(trackAge/ageMax),uncReliability=1-clamp01((accUnc-uncFull)/(uncCut-uncFull)),accelConfidence=Number.isFinite(Number(t.accelerationConfidence))?clamp01(Number(t.accelerationConfidence)):1,apnReliability=apnCfg.enabled===false?0:clamp01(ageReliability*uncReliability*accelConfidence),apnGain=Math.max(0,Number(apnCfg.targetAccelGain)||N*.5),apnCap=Math.max(0,Number(apnCfg.maxAugmentAccelMps2)||140),phaseApnScale=terminal?1:clamp01(Number(pc.midcourseApnScale)||.30),apn=clamp(targetNormalAccel*apnGain*apnReliability*phaseApnScale,-apnCap*phaseApnScale,apnCap*phaseApnScale);
     const biasGain=terminal?Math.max(0,Number(cfg.losBiasGainPerS)||1.25):Math.max(0,Number(pc.midcourseLosBiasGainPerS)||.42),biasCap=terminal?Math.max(0,Number(cfg.losBiasAccelCapMps2)||210):Math.max(0,Number(pc.midcourseLosBiasAccelCapMps2)||42),bias=clamp(speed*aimErr*biasGain,-biasCap,biasCap),maxAccel=recovery?Math.max(1,Number(ag.recoveryMaxCommandAccelMps2)||620):terminal?Math.max(1,Number(cfg.maxCommandAccelMps2)||480):Math.max(1,Number(pc.midcourseMaxCommandAccelMps2)||72),normalAccel=clamp(pn+apn+bias,-maxAccel,maxAccel),forwardRef=missileGuidanceReferenceForwardAccelMps2(m),maxOff=(recovery?Math.max(0,Number(ag.recoveryMaxThrustVectorOffVelocityDeg)||88):terminal?Math.max(0,Number(cfg.maxThrustVectorOffVelocityDeg)||85):Math.max(0,Number(pc.midcourseMaxThrustVectorOffVelocityDeg)||18))*Math.PI/180,pnOff=clamp(Math.atan2(normalAccel,Math.max(1,forwardRef)),-maxOff,maxOff),pnThrustAngle=normalizeAngle(velAngle+pnOff),launchRange=Math.max(R,Number(g.launchRangeM)||R),rangeFrac=clamp(R/launchRange,0,1),blend=recovery?0:clamp((Number(cfg.pursuitBlendNear)||.02)+((Number(cfg.pursuitBlendFar)||.18)-(Number(cfg.pursuitBlendNear)||.02))*rangeFrac,0,1),lowSpeed=speed<Math.max(1,Number(cfg.lowSpeedAimThresholdMps)||80),rawDesiredAngle=lowSpeed?aimAngle:missileAngleBlend(pnThrustAngle,aimAngle,blend);
-    // WIP79: 종말에 횡추진제가 남아 있으면 기수를 속도 벡터에 붙인다. 그래야 기체 +y 다이버트 축이
-    // 정확히 크로스트랙이 되어 추진제가 궤도 수정에만 쓰인다. 오버슛 복구는 실제로 몸통을 되돌려야
-    // 하므로 제외한다. 저속 구간도 종전처럼 조준각을 그대로 따른다.
-    const terminalDivert=terminal&&!recovery&&!lowSpeed&&lateralAuthorityAccel>1e-6&&lateralAuthorityAccel>bodySteerAccel,divertOff=Math.max(0,Number(pc.terminalDivertMaxOffVelocityDeg)||8)*Math.PI/180,capOff=terminalDivert?divertOff:maxOff;
-    const desiredAngle=(!terminal||terminalDivert)&&!lowSpeed?normalizeAngle(velAngle+clamp(normalizeAngle(rawDesiredAngle-velAngle),-capOff,capOff)):rawDesiredAngle;
-    return {target:t,phase,terminal,terminalDivert,lateralAuthorityAccelMps2:lateralAuthorityAccel,bodySteerAuthorityAccelMps2:bodySteerAccel,rx,ry,rangeM:R,rangeRateMps:rangeRate,closingMps:closing,losAngleRad:los,losRateRadS:losRate,velocityAngleRad:velAngle,leadTimeS:leadTime,aimX,aimY,aimAngleRad:aimAngle,aimErrorRad:aimErr,pnAccelMps2:pn,apnAccelMps2:apn,targetNormalAccelMps2:targetNormalAccel,accelerationConfidence:accelConfidence,apnReliability,biasAccelMps2:bias,commandNormalAccelMps2:normalAccel,desiredAngleRad:desiredAngle,interceptMode:g.interceptMode,maxThrustVectorOffVelocityRad:maxOff};
+    const desiredAngle=!terminal&&!lowSpeed?normalizeAngle(velAngle+clamp(normalizeAngle(rawDesiredAngle-velAngle),-maxOff,maxOff)):rawDesiredAngle;
+    return {target:t,phase,terminal,rx,ry,rangeM:R,rangeRateMps:rangeRate,closingMps:closing,losAngleRad:los,losRateRadS:losRate,velocityAngleRad:velAngle,leadTimeS:leadTime,aimX,aimY,aimAngleRad:aimAngle,aimErrorRad:aimErr,pnAccelMps2:pn,apnAccelMps2:apn,targetNormalAccelMps2:targetNormalAccel,accelerationConfidence:accelConfidence,apnReliability,biasAccelMps2:bias,commandNormalAccelMps2:normalAccel,desiredAngleRad:desiredAngle,interceptMode:g.interceptMode,maxThrustVectorOffVelocityRad:maxOff};
   }
   function missileComputeTruthGuidanceSolution(m,target){return missileComputeGuidanceSolution(m,missileTruthTargetSnapshot(target));}
   function missileGuidanceSustainDemandFraction(m,solution){
     const profile=missileRigidBodyProfile(m?.profileId),cfg=profile?.guidance?.sustain?.throttleControl||{},state=m?.propulsion?.sustain,stage=missileCurrentSustainPulse(m)?.status==='burning'?profile?.propulsion?.sustain?.pulses?.[missileCurrentSustainPulse(m).index]:profile?.propulsion?.sustain?.pulses?.[state?.pulses?.findIndex(q=>q.status==='ready'&&q.propRemainingKg>1e-9)];
     if(!cfg.enabled||!stage)return 1;
     const fullAccel=Math.max(1,(Number(stage.thrustN)||0)/Math.max(.001,Number(m.massKg)||1)),reserve=Math.max(1,Number(cfg.demandReserve)||1.12),normalDemand=Math.abs(Number(solution?.commandNormalAccelMps2)||0),required=clamp(normalDemand/fullAccel*reserve,0,1),err=Math.abs(Number(solution?.aimErrorRad)||0);
-    if(solution?.terminalDivert){const onCourse=Math.max(.05,Number(cfg.divertOnCourseDeg)||1.5)*Math.PI/180,hold=Math.max(onCourse,Math.max(.05,Number(cfg.divertHoldDeg)||6)*Math.PI/180),gentle=clamp(Number(cfg.divertGentleFraction)||.25,.001,1);return err<=onCourse?1:err>=hold?gentle:gentle+(1-gentle)*(1-(err-onCourse)/Math.max(1e-9,hold-onCourse));}
     let floor=0;if(solution?.interceptMode==='OVERSHOOT_RECOVERY')floor=Math.max(floor,Number(cfg.recoveryMinFraction)||.85);else if(solution?.interceptMode==='HIGH_ERROR_INTERCEPT')floor=Math.max(floor,Number(cfg.highErrorMinFraction)||.65);if(err>=Math.max(0,Number(cfg.emergencyErrorDeg)||32)*Math.PI/180)floor=Math.max(floor,Number(cfg.emergencyFraction)||1);
     return Math.max(required,floor,.001);
   }
@@ -6075,8 +6056,8 @@ function updateSensorSystems(ships,dt){for(const observer of ships){if(!observer
   function missileClearDivertCommands(m){missileSetDacsCommand(m,0);missileSetRcsTranslationCommand(m,0);return 0;}
   function missileGuidanceDacsCommand(m,solution){
     const profile=missileRigidBodyProfile(m?.profileId),cfg=profile?.guidance?.dacs||{},dacs=profile?.propulsion?.dacs||{},g=m?.guidance;if(solution?.phase!=='TERMINAL'){missileClearDivertCommands(m);if(g){g.dacsCommand=0;g.mainMotorNormalAccelMps2=0;g.dacsResidualAccelMps2=0;}return 0;}if(!g||!m?.propulsion?.dacs?.enabled){missileClearDivertCommands(m);return 0;}if(g.source==='MIDCOURSE_DL'&&g.datalink?.status!=='DL_TRACK'){missileClearDivertCommands(m);g.dacsCommand=0;return 0;}if(g.source==='ARH_SEEKER'&&g.seeker?.status!=='TRACK'){missileClearDivertCommands(m);g.dacsCommand=0;return 0;}
-    const start=Math.max(1,Number(cfg.startRangeM)||12000),full=clamp(Number(cfg.fullRangeM)||3000,0,start),R=solution.rangeM,err=Math.abs(Number(solution.aimErrorRad)||normalizeAngle(solution.aimAngleRad-solution.velocityAngleRad)),highError=err>=Math.max(0,Number(cfg.highErrorDeg)||14)*Math.PI/180,recovery=solution.interceptMode==='OVERSHOOT_RECOVERY',reserve=missileDacsRemainingDeltaVMps(m)<=Math.max(0,Number(cfg.reserveFloorMps)||0),divert=!!solution.terminalDivert;if((!divert&&R>=start&&!highError&&!recovery)||reserve){missileClearDivertCommands(m);g.dacsCommand=0;g.mainMotorNormalAccelMps2=0;g.dacsResidualAccelMps2=0;return 0;}
-    const mainMotorNormal=missileMainMotorNormalAccelMps2(m,solution),residualNormal=(Number(solution.commandNormalAccelMps2)||0)-mainMotorNormal,rangeGate=R<start?1-clamp((R-full)/Math.max(1,start-full),0,1):0,errorGate=clamp(err/(35*Math.PI/180),0,1),gate=(divert||recovery)?1:Math.max(rangeGate,.75*errorGate),speed=Math.hypot(m.vx,m.vy),nx=speed>1e-6?-m.vy/speed:-Math.sin(m.angle),ny=speed>1e-6?m.vx/speed:Math.cos(m.angle),aWorldX=nx*residualNormal,aWorldY=ny*residualNormal,sideX=-Math.sin(m.angle),sideY=Math.cos(m.angle),sideDemand=aWorldX*sideX+aWorldY*sideY,maxA=Math.max(1,(Number(dacs.maxLateralThrustN)||0)/Math.max(.001,m.massKg)),engage=Math.max(0,Number(cfg.engageAccelMps2)||18),guidanceMax=recovery?Math.max(Number(profile?.guidance?.aggressiveIntercept?.recoveryMaxCommandAccelMps2)||620,1):Math.max(Number(profile?.guidance?.maxCommandAccelMps2)||480,1),urgency=clamp((Math.abs(residualNormal)-engage)/Math.max(1,guidanceMax-engage),0,1),geom=Math.min(1,err/(18*Math.PI/180)),authority=Math.max(urgency,.55*geom,recovery?.72:0),cmd=clamp(sideDemand/maxA,-1,1)*gate*authority;
+    const start=Math.max(1,Number(cfg.startRangeM)||12000),full=clamp(Number(cfg.fullRangeM)||3000,0,start),R=solution.rangeM,err=Math.abs(Number(solution.aimErrorRad)||normalizeAngle(solution.aimAngleRad-solution.velocityAngleRad)),highError=err>=Math.max(0,Number(cfg.highErrorDeg)||14)*Math.PI/180,recovery=solution.interceptMode==='OVERSHOOT_RECOVERY',reserve=missileDacsRemainingDeltaVMps(m)<=Math.max(0,Number(cfg.reserveFloorMps)||0);if((R>=start&&!highError&&!recovery)||reserve){missileClearDivertCommands(m);g.dacsCommand=0;g.mainMotorNormalAccelMps2=0;g.dacsResidualAccelMps2=0;return 0;}
+    const mainMotorNormal=missileMainMotorNormalAccelMps2(m,solution),residualNormal=(Number(solution.commandNormalAccelMps2)||0)-mainMotorNormal,rangeGate=R<start?1-clamp((R-full)/Math.max(1,start-full),0,1):0,errorGate=clamp(err/(35*Math.PI/180),0,1),gate=recovery?1:Math.max(rangeGate,.75*errorGate),speed=Math.hypot(m.vx,m.vy),nx=speed>1e-6?-m.vy/speed:-Math.sin(m.angle),ny=speed>1e-6?m.vx/speed:Math.cos(m.angle),aWorldX=nx*residualNormal,aWorldY=ny*residualNormal,sideX=-Math.sin(m.angle),sideY=Math.cos(m.angle),sideDemand=aWorldX*sideX+aWorldY*sideY,maxA=Math.max(1,(Number(dacs.maxLateralThrustN)||0)/Math.max(.001,m.massKg)),engage=Math.max(0,Number(cfg.engageAccelMps2)||18),guidanceMax=recovery?Math.max(Number(profile?.guidance?.aggressiveIntercept?.recoveryMaxCommandAccelMps2)||620,1):Math.max(Number(profile?.guidance?.maxCommandAccelMps2)||480,1),urgency=clamp((Math.abs(residualNormal)-engage)/Math.max(1,guidanceMax-engage),0,1),geom=Math.min(1,err/(18*Math.PI/180)),authority=Math.max(urgency,.55*geom,recovery?.72:0),cmd=clamp(sideDemand/maxA,-1,1)*gate*authority;
     // 같은 횡가속 요구를 두 계통에 각자의 권한으로 정규화해 함께 낸다. RCS 병진은 DACS의 약 8%지만
     // DACS가 포화한 구간에서 보조가 되고, DACS가 고갈된 뒤에도 종말 미세 수정을 이어간다.
     const rcsMaxA=Math.max(0,Number(profile?.propulsion?.attitudeRcs?.maxTranslationThrustN)||0)/Math.max(.001,Number(m.massKg)||.001);
@@ -6095,7 +6076,7 @@ function updateSensorSystems(ships,dt){for(const observer of ships){if(!observer
   }
   function missileUpdateGuidance(m,dt){
     const profile=missileRigidBodyProfile(m?.profileId),cfg=profile?.guidance,g=m?.guidance;if(!m?.active||!cfg||!g?.enabled)return null;if(g.source==='MIDCOURSE_DL')missileUpdateMidcourseDatalink(m,dt);const bearingActive=missileUpdateBearingCue(m);if(profile?.guidance?.passiveIrSeeker)missileUpdatePassiveIrSeeker(m,dt);else missileUpdateArhSeeker(m,dt);const target=missileGuidanceTargetSnapshot(m);if(!target){if(!bearingActive)g.status=g.source==='MIDCOURSE_DL'?(g.datalink?.status||'lost'):g.source==='ARH_SEEKER'?(g.seeker?.status==='MEMORY_TURN'?'arh-memory-turn':g.seeker?.status==='REACQUIRE'?'arh-reacquire':g.seeker?.status==='LOST'?'arh-lost':g.seeker?.status==='SEARCH'?'arh-search':'arh-coast'):g.source==='IR_SEEKER'?(g.seeker?.status==='MEMORY_TURN'?'ir-memory-turn':g.seeker?.status==='REACQUIRE'?'ir-reacquire':g.seeker?.status==='LOST'?'ir-lost':'ir-search'):'lost';missileClearDivertCommands(m);if(missileCurrentSustainPulse(m)?.status==='burning'){const minStep=missileSustainThrottleSteps(m)[0]||.15;missileSetSustainThrottleStep(m,minStep);g.sustainRequestedFraction=minStep;g.sustainThrottleFraction=missileCurrentSustainThrottle(m);g.sustainDecision='TRACK_LOST_MIN';}return null;}const sol=missileComputeGuidanceSolution(m,target);if(!sol)return null;
-    const preBoostAlignActive=missilePreBoostAlignmentActive(m),boostCapture=missileBoostVectorCaptureActive(m),launchDeltaV=(preBoostAlignActive||boostCapture)?missileComputeLaunchDeltaVSolution(m,sol):null,preBoostAlignAngle=preBoostAlignActive&&launchDeltaV?launchDeltaV.thrustAngleRad:null,preBoostAlign=Number.isFinite(preBoostAlignAngle);if(launchDeltaV)missilePublishLaunchDeltaVTelemetry(m,launchDeltaV);g.phase=preBoostAlign?'PREBOOST_ALIGN':boostCapture?'BOOST_VECTOR_CAPTURE':sol.phase;g.terminalDivert=!!sol.terminalDivert;g.lateralAuthorityAccelMps2=Number(sol.lateralAuthorityAccelMps2)||0;g.rangeM=sol.rangeM;g.closingMps=sol.closingMps;g.losAngleRad=sol.losAngleRad;g.losRateRadS=sol.losRateRadS;g.leadTimeS=sol.leadTimeS;g.aimX=sol.aimX;g.aimY=sol.aimY;g.desiredAngleRad=sol.desiredAngleRad;g.commandNormalAccelMps2=sol.commandNormalAccelMps2;g.pnAccelMps2=sol.pnAccelMps2;g.apnAccelMps2=sol.apnAccelMps2;g.targetNormalAccelMps2=sol.targetNormalAccelMps2;g.apnReliability=sol.apnReliability;g.biasAccelMps2=sol.biasAccelMps2;g.closestApproachM=Math.min(Number(g.closestApproachM)||Infinity,sol.rangeM);g.lastUpdateS=m.ageS;if(g.source==='MIDCOURSE_DL')g.status=g.datalink?.status==='DL_TRACK'?'dl-guiding':g.datalink?.status==='INS_COAST'?'ins-coast':g.datalink?.status||'dl-lost';else if(g.source==='IR_SEEKER')g.status=g.seeker?.status==='TRACK'?'ir-track':g.seeker?.status==='COAST'?'ir-coast':g.seeker?.status==='MEMORY_TURN'?'ir-memory-turn':g.seeker?.status==='REACQUIRE'?'ir-reacquire':g.seeker?.status==='LOST'?'ir-lost':'ir-search';else if(g.source==='ARH_SEEKER')g.status=g.seeker?.status==='TRACK'?'arh-track':g.seeker?.status==='COAST'?'arh-coast':g.seeker?.status==='MEMORY_TURN'?'arh-memory-turn':g.seeker?.status==='REACQUIRE'?'arh-reacquire':g.seeker?.status==='LOST'?'arh-lost':'arh-search';
+    const preBoostAlignActive=missilePreBoostAlignmentActive(m),boostCapture=missileBoostVectorCaptureActive(m),launchDeltaV=(preBoostAlignActive||boostCapture)?missileComputeLaunchDeltaVSolution(m,sol):null,preBoostAlignAngle=preBoostAlignActive&&launchDeltaV?launchDeltaV.thrustAngleRad:null,preBoostAlign=Number.isFinite(preBoostAlignAngle);if(launchDeltaV)missilePublishLaunchDeltaVTelemetry(m,launchDeltaV);g.phase=preBoostAlign?'PREBOOST_ALIGN':boostCapture?'BOOST_VECTOR_CAPTURE':sol.phase;g.rangeM=sol.rangeM;g.closingMps=sol.closingMps;g.losAngleRad=sol.losAngleRad;g.losRateRadS=sol.losRateRadS;g.leadTimeS=sol.leadTimeS;g.aimX=sol.aimX;g.aimY=sol.aimY;g.desiredAngleRad=sol.desiredAngleRad;g.commandNormalAccelMps2=sol.commandNormalAccelMps2;g.pnAccelMps2=sol.pnAccelMps2;g.apnAccelMps2=sol.apnAccelMps2;g.targetNormalAccelMps2=sol.targetNormalAccelMps2;g.apnReliability=sol.apnReliability;g.biasAccelMps2=sol.biasAccelMps2;g.closestApproachM=Math.min(Number(g.closestApproachM)||Infinity,sol.rangeM);g.lastUpdateS=m.ageS;if(g.source==='MIDCOURSE_DL')g.status=g.datalink?.status==='DL_TRACK'?'dl-guiding':g.datalink?.status==='INS_COAST'?'ins-coast':g.datalink?.status||'dl-lost';else if(g.source==='IR_SEEKER')g.status=g.seeker?.status==='TRACK'?'ir-track':g.seeker?.status==='COAST'?'ir-coast':g.seeker?.status==='MEMORY_TURN'?'ir-memory-turn':g.seeker?.status==='REACQUIRE'?'ir-reacquire':g.seeker?.status==='LOST'?'ir-lost':'ir-search';else if(g.source==='ARH_SEEKER')g.status=g.seeker?.status==='TRACK'?'arh-track':g.seeker?.status==='COAST'?'arh-coast':g.seeker?.status==='MEMORY_TURN'?'arh-memory-turn':g.seeker?.status==='REACQUIRE'?'arh-reacquire':g.seeker?.status==='LOST'?'arh-lost':'arh-search';
     if(g.source==='TEST_TRUTH'&&sol.rangeM<=Math.max(.1,Number(cfg.interceptTestRadiusM)||20)){g.intercepted=true;g.interceptTimeS=m.ageS;g.status='test-intercept';missileClearDivertCommands(m);return sol;}if(m.ageS>Math.max(1,Number(cfg.maxGuidanceLifeS)||90)){g.status='timeout';missileClearDivertCommands(m);return sol;}
     let noseCmd;if(preBoostAlign){noseCmd=normalizeAngle(Number(preBoostAlignAngle));g.launchDeltaVCommandRad=noseCmd;}else if(boostCapture&&launchDeltaV){noseCmd=missileBoostVectorCaptureAngle(m,launchDeltaV,dt);}else noseCmd=missileGuidanceStableNoseAngle(m,sol,dt);
     g.commandedNoseAngleRad=noseCmd;
@@ -13539,45 +13520,32 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   }catch(error){check('runtime',false,{error:String(error?.stack||error)});}return {version:'1.31.36-MISSILE-PHYS-WIP16',model:'dacs-direct-lateral-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
 
 
-  // WIP79 — 종말 다이버트 교리
-  // 종말에서 몸통을 꺾어 추력 벡터를 돌리는 것은 주 모터가 탈 때만 옳다. 모터가 꺼진 종말에서
-  // 같은 명령은 DACS 축(기체 +y = 기수+90도)을 요구 법선에서 떼어놓아 추진제를 진행 방향으로
-  // 태워버린다. 1.31.38까지 300 m/s 횡단 표적이 이 이유로 빗나갔다 — 기체가 속도 벡터에서
-  // 최대 85도까지 돌아가 다이버트 효율이 8%까지 떨어졌고, 17kg을 다 쓰고도 92m를 놓쳤다.
-  // 이 하네스는 그 교리 전환을 고정한다: 종말에는 기수를 속도 벡터에 붙이고, 궤도 수정을
-  // 횡추력(DACS + 자세 RCS 병진)으로만 하며, 코스에 들어갈 때까지 가속을 죽인다.
-  window.__SPACEFRAME_MISSILE_TERMINAL_DIVERT_WIP79_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
-    const p=missileRigidBodyProfile('arh-40k-prototype-body'),pc=p.guidance.phaseControl,rcsCfg=p.propulsion.attitudeRcs,tc=p.guidance.sustain.throttleControl;
-    check('terminal-divert-profile-contract',Number(pc.terminalDivertMaxOffVelocityDeg)>0&&Number(pc.terminalDivertMaxOffVelocityDeg)<45&&Number(rcsCfg.maxTranslationThrustN)>0&&Number(rcsCfg.maxTranslationThrustN)<=Number(rcsCfg.maxTorqueNm)/Number(rcsCfg.leverArmM)+1e-6&&Number(rcsCfg.translationReserveFraction)>0&&Number(rcsCfg.translationReserveFraction)<1&&Number(tc.divertGentleFraction)>0&&Number(tc.divertGentleFraction)<1&&Number(tc.divertOnCourseDeg)>0&&Number(tc.divertOnCourseDeg)<Number(tc.divertHoldDeg),{pc:pc.terminalDivertMaxOffVelocityDeg,rcs:{t:rcsCfg.maxTranslationThrustN,r:rcsCfg.translationReserveFraction},tc});
-    // 주 모터가 모두 소진된 종말 탄체. 이 상태에서 몸통을 꺾어봐야 추력 벡터는 생기지 않는다.
-    const coasting=()=>{const m=createMissileRigidBody(p.id,{x:0,y:0,vx:1000,vy:0,angle:0});m.propulsion.boost.status='burnout';m.propulsion.boost.propRemainingKg=0;for(const q of m.propulsion.sustain.pulses){q.status='burnout';q.propRemainingKg=0;}m.propulsion.sustain.currentPulseIndex=-1;m.massKg=Math.max(p.physical.dryMassKg,m.massKg-110);missileRefreshMassProperties(m);return m;};
-    const offVelDeg=(m,sol)=>Math.abs(normalizeAngle(Number(sol.desiredAngleRad)-Math.atan2(m.vy,m.vx)))*180/Math.PI;
+  // WIP79 — 자세 RCS 병진 추력
+  // 자세 RCS는 같은 추력기 뱅크를 짝힘(토크)으로도, 동방향 분사(병진)로도 쓸 수 있다. 병진은
+  // 몸통을 돌리지 않고 궤도를 옮기므로 종말 다이버트를 보조한다. DACS의 약 8% 권한이지만,
+  // 실제 경로(DL 중간유도 -> 16km ARH 인계) 회피 표적 격자에서 평균 최근접거리를 135.8m에서
+  // 126.7m로 낮췄다. 명중 수는 10/13으로 동일하다.
+  //
+  // 같은 작업에서 시도했다가 실측으로 폐기한 것 셋을 여기 남긴다. 되살리려는 시도를 막기 위해서다.
+  //  - 종말에 기수를 속도 벡터에 고정: 시커가 트랙을 소유하면 missileGuidanceStableNoseAngle이
+  //    이미 기수 명령을 LOS 짐벌 원뿔(TRACK 30도 / COAST 24도) 안으로 정형한다. 그 위에 두 번째
+  //    기수 정책을 얹으면 서로 싸워 회피 표적 명중이 10/13 -> 0/13으로 무너졌다.
+  //  - DACS 거리 게이트 개방: 시커 측정 잡음에 다이버트 명령이 매 틱 부호를 뒤집는 한계 사이클에
+  //    빠져 12km 밖에서 추진제를 전부 태운다.
+  //  - 코스 정렬 전 가속 억제: 실제 경로 이득이 0이면서 crossing-180mps 요격을 깬다.
+  window.__SPACEFRAME_MISSILE_RCS_TRANSLATION_WIP79_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
+    const p=missileRigidBodyProfile('arh-40k-prototype-body'),pc=p.guidance.phaseControl,rcsCfg=p.propulsion.attitudeRcs;
+    // 병진 추력은 뱅크 한쪽이 낼 수 있는 힘(maxTorqueNm / leverArmM)을 넘을 수 없다.
+    check('rcs-translation-profile-contract',Number(rcsCfg.maxTranslationThrustN)>0&&Number(rcsCfg.maxTranslationThrustN)<=Number(rcsCfg.maxTorqueNm)/Number(rcsCfg.leverArmM)+1e-6&&Number(rcsCfg.translationReserveFraction)>0&&Number(rcsCfg.translationReserveFraction)<1,{maxTranslationThrustN:rcsCfg.maxTranslationThrustN,cap:Number(rcsCfg.maxTorqueNm)/Number(rcsCfg.leverArmM),reserve:rcsCfg.translationReserveFraction});
 
-    const near=coasting(),nearTgt={x:12000,y:2500,vx:0,vy:300,active:true};missileSetTruthGuidanceTarget(near,nearTgt,{autoIgniteBoost:false});
-    const nearSol=missileComputeGuidanceSolution(near,nearTgt);
-    // 요구 법선가속이 충분히 커서, 상한이 없다면 기수가 속도 벡터에서 크게 벌어졌을 상황이어야 한다.
-    check('terminal-divert-pins-nose-to-velocity-vector',!!nearSol&&nearSol.terminal&&nearSol.terminalDivert&&Math.abs(nearSol.commandNormalAccelMps2)>100&&offVelDeg(near,nearSol)<=Number(pc.terminalDivertMaxOffVelocityDeg)+1e-6,{terminal:nearSol?.terminal,divert:nearSol?.terminalDivert,aN:nearSol?.commandNormalAccelMps2,offDeg:nearSol?offVelDeg(near,nearSol):null});
-    // 중간유도는 종전 그대로다. 여기서는 주 모터 추력 벡터가 실제 조종면이므로 몸통을 쓴다.
-    const far=coasting(),farTgt={x:34000,y:9000,vx:0,vy:300,active:true};missileSetTruthGuidanceTarget(far,farTgt,{autoIgniteBoost:false});
-    const farSol=missileComputeGuidanceSolution(far,farTgt);
-    check('midcourse-body-authority-unchanged',!!farSol&&!farSol.terminal&&!farSol.terminalDivert&&offVelDeg(far,farSol)<=Number(pc.midcourseMaxThrustVectorOffVelocityDeg)+1e-6,{phase:farSol?.phase,offDeg:farSol?offVelDeg(far,farSol):null});
-    // 오버슛 복구는 진짜로 몸통을 되돌려야 하는 상황이므로 다이버트 상한에서 제외된다.
-    const past=coasting(),pastTgt={x:-500,y:0,vx:0,vy:0,active:true};missileSetTruthGuidanceTarget(past,pastTgt,{autoIgniteBoost:false});
-    const pastSol=missileComputeGuidanceSolution(past,pastTgt);
-    check('overshoot-recovery-keeps-full-body-authority',!!pastSol&&pastSol.interceptMode==='OVERSHOOT_RECOVERY'&&!pastSol.terminalDivert&&offVelDeg(past,pastSol)>Number(pc.terminalDivertMaxOffVelocityDeg),{mode:pastSol?.interceptMode,divert:pastSol?.terminalDivert,offDeg:pastSol?offVelDeg(past,pastSol):null});
-
-    // 횡추진제를 다 쓰면 부등호가 뒤집혀 기수 고정이 풀린다. 그러지 않으면 다 쓴 뒤에도
-    // 기수가 속도 벡터에 묶여 아무 기동도 못 하게 된다 — 잔여 delta-v가 아니라 최대 추력으로
-    // 권한을 재면 0.26kg 남은 DACS도 만권한으로 계산돼 이 전환이 일어나지 않는다.
-    const spent=createMissileRigidBody(p.id,{x:0,y:0,vx:1000,vy:0,angle:0});spent.propulsion.boost.status='burnout';spent.propulsion.boost.propRemainingKg=0;spent.massKg=Math.max(p.physical.dryMassKg,spent.massKg-105);missileRefreshMassProperties(spent);spent.propulsion.dacs.propRemainingKg=.05;
-    const spentTgt={x:12000,y:2500,vx:0,vy:300,active:true};missileSetTruthGuidanceTarget(spent,spentTgt,{autoIgniteBoost:false});
-    const spentSol=missileComputeGuidanceSolution(spent,spentTgt);
-    check('terminal-divert-releases-nose-when-lateral-deltav-spent',!!spentSol&&spentSol.terminal&&!spentSol.terminalDivert&&missileDacsRemainingDeltaVMps(spent)<Number(p.guidance.dacs.reserveFloorMps)&&spentSol.bodySteerAuthorityAccelMps2>spentSol.lateralAuthorityAccelMps2&&offVelDeg(spent,spentSol)>Number(pc.terminalDivertMaxOffVelocityDeg),{divert:spentSol?.terminalDivert,dacsDv:missileDacsRemainingDeltaVMps(spent),floor:p.guidance.dacs.reserveFloorMps,lateral:spentSol?.lateralAuthorityAccelMps2,body:spentSol?.bodySteerAuthorityAccelMps2,offDeg:spentSol?offVelDeg(spent,spentSol):null});
-
-    // 자세 RCS는 짝힘(토크)뿐 아니라 동방향 분사(병진)도 낼 수 있다. 병진은 각속도를 만들지 않는다.
+    // 병진은 각속도를 만들지 않는다. 순수 병진력이므로 전방속도도 건드리지 않는다.
     const tr=createMissileRigidBody(p.id,{vx:500,vy:0,angle:0}),trRcs0=tr.propulsion.attitudeRcs.propRemainingKg,trW0=tr.angVel;
     missileSetRcsTranslationCommand(tr,1);for(let i=0;i<50;i++){missileUpdateAttitudeRcs(tr,.02);integrateMissileRigidBody(tr,.02);}
     check('attitude-rcs-produces-lateral-translation',tr.vy>5&&Math.abs(tr.vx-500)<1e-9&&Math.abs(tr.angVel-trW0)<1e-12&&tr.propulsion.attitudeRcs.propRemainingKg<trRcs0,{vy:tr.vy,vx:tr.vx,omega:tr.angVel,prop:tr.propulsion.attitudeRcs.propRemainingKg});
+    // 병진 추력은 기체 +y축을 따른다 — 기수가 돌아가면 밀리는 방향도 같이 돈다.
+    const side=createMissileRigidBody(p.id,{vx:0,vy:400,angle:Math.PI/2});missileSetRcsTranslationCommand(side,1);
+    for(let i=0;i<50;i++){missileUpdateAttitudeRcs(side,.02);integrateMissileRigidBody(side,.02);}
+    check('rcs-translation-follows-the-body-lateral-axis',side.vx<-5&&Math.abs(side.vy-400)<1e-9,{vx:side.vx,vy:side.vy,angleDeg:side.angle*180/Math.PI});
     // 같은 뱅크를 나눠 쓰므로 토크가 먼저다. 최대 토크를 요구하면 병진 몫은 남지 않는다.
     const pri=createMissileRigidBody(p.id,{angle:0});pri.control.attitude.rcsTorqueCommandNm=rcsCfg.maxTorqueNm;missileSetRcsTranslationCommand(pri,1);missileUpdateAttitudeRcs(pri,.02);
     check('rcs-torque-has-priority-over-translation',Math.abs(pri.propulsion.attitudeRcs.currentTorqueNm-rcsCfg.maxTorqueNm)<1e-6&&Math.abs(pri.propulsion.attitudeRcs.currentTranslationThrustN)<1e-9,{torque:pri.propulsion.attitudeRcs.currentTorqueNm,translation:pri.propulsion.attitudeRcs.currentTranslationThrustN});
@@ -13586,38 +13554,34 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     const reserveKg=Number(rcsCfg.translationReserveFraction)*res.propulsion.attitudeRcs.propInitialKg,resProp=res.propulsion.attitudeRcs.propRemainingKg;
     res.control.attitude.rcsTorqueCommandNm=1000;missileUpdateAttitudeRcs(res,.02);
     check('rcs-translation-never-starves-attitude-control',Math.abs(resProp-reserveKg)<1e-6&&res.propulsion.attitudeRcs.currentTranslationThrustN===0&&Math.abs(res.propulsion.attitudeRcs.currentTorqueNm-1000)<1e-6&&res.propulsion.attitudeRcs.propRemainingKg<resProp,{prop:resProp,reserveKg,translation:res.propulsion.attitudeRcs.currentTranslationThrustN,torque:res.propulsion.attitudeRcs.currentTorqueNm});
+    // 빈 자세 RCS는 병진도 못 낸다.
+    const dry=createMissileRigidBody(p.id,{vx:500,angle:0});dry.propulsion.attitudeRcs.propRemainingKg=0;missileSetRcsTranslationCommand(dry,1);missileUpdateAttitudeRcs(dry,.02);integrateMissileRigidBody(dry,.02);
+    check('empty-attitude-rcs-cannot-translate',Math.abs(dry.vy)<1e-12&&dry.propulsion.attitudeRcs.currentTranslationThrustN===0,{vy:dry.vy,translation:dry.propulsion.attitudeRcs.currentTranslationThrustN});
 
-    // 종말 진입과 동시에 다이버트를 쓴다. 같은 횡편차를 늦게 지울수록 필요한 delta-v가 커지므로
-    // DACS start range(12km)까지 아껴 두는 종전 게이트는 다이버트 주력 교리에서 손해다.
-    // 조준 오차는 종전 고오차 예외(highErrorDeg)보다 작게 잡는다. 그래야 이 단언이 실제로
-    // 거리 게이트를 시험한다 — 오차가 크면 종전 코드도 예외로 다이버트를 켜기 때문이다.
-    const ent=coasting(),entTgt={x:16000,y:400,vx:0,vy:60,active:true};missileSetTruthGuidanceTarget(ent,entTgt,{autoIgniteBoost:false});missileUpdateGuidance(ent,.01);
-    const entAimDeg=Math.abs(normalizeAngle(Math.atan2(ent.guidance.aimY-ent.y,ent.guidance.aimX-ent.x)-Math.atan2(ent.vy,ent.vx)))*180/Math.PI;
-    check('divert-engages-at-terminal-entry',ent.guidance.rangeM>Number(p.guidance.dacs.startRangeM)&&ent.guidance.rangeM<Number(pc.terminalRangeM)&&entAimDeg<Number(p.guidance.dacs.highErrorDeg)&&Math.abs(ent.propulsion.dacs.command)>.05&&Math.abs(ent.propulsion.attitudeRcs.translationCommand)>0,{range:ent.guidance.rangeM,start:p.guidance.dacs.startRangeM,aimErrDeg:entAimDeg,highErrorDeg:p.guidance.dacs.highErrorDeg,dacs:ent.propulsion.dacs.command,rcs:ent.propulsion.attitudeRcs.translationCommand});
-    // 코스가 어긋난 채로 세게 가속하면 남은 비행시간만 줄어 횡수정 여유가 사라진다.
-    const thr=createMissileRigidBody(p.id,{vx:900,angle:0});thr.propulsion.boost.status='burnout';thr.propulsion.boost.propRemainingKg=0;
-    const offCourse=missileGuidanceSustainDemandFraction(thr,{terminalDivert:true,aimErrorRad:20*Math.PI/180,commandNormalAccelMps2:400,interceptMode:'APN_INTERCEPT'}),
-          onCourse=missileGuidanceSustainDemandFraction(thr,{terminalDivert:true,aimErrorRad:.2*Math.PI/180,commandNormalAccelMps2:400,interceptMode:'APN_INTERCEPT'}),
-          legacy=missileGuidanceSustainDemandFraction(thr,{aimErrorRad:20*Math.PI/180,commandNormalAccelMps2:400,interceptMode:'HIGH_ERROR_INTERCEPT'});
-    check('terminal-divert-defers-acceleration-until-on-course',Math.abs(offCourse-Number(tc.divertGentleFraction))<1e-9&&onCourse===1&&legacy>offCourse,{offCourse,onCourse,legacy,gentle:tc.divertGentleFraction});
+    // 종말 다이버트가 걸리면 RCS 병진도 같은 횡가속 요구를 자기 권한으로 정규화해 함께 낸다.
+    const coasting=()=>{const m=createMissileRigidBody(p.id,{x:0,y:0,vx:1000,vy:0,angle:0});m.propulsion.boost.status='burnout';m.propulsion.boost.propRemainingKg=0;for(const q of m.propulsion.sustain.pulses){q.status='burnout';q.propRemainingKg=0;}m.propulsion.sustain.currentPulseIndex=-1;m.massKg=Math.max(p.physical.dryMassKg,m.massKg-110);missileRefreshMassProperties(m);return m;};
+    const pair=coasting(),pairTgt={x:6000,y:900,vx:0,vy:180,active:true};missileSetTruthGuidanceTarget(pair,pairTgt,{autoIgniteBoost:false});missileUpdateGuidance(pair,.01);
+    check('rcs-translation-follows-the-divert-command',Math.abs(pair.propulsion.dacs.command)>.01&&Math.abs(pair.propulsion.attitudeRcs.translationCommand)>0&&Math.sign(pair.propulsion.attitudeRcs.translationCommand)===Math.sign(pair.propulsion.dacs.command),{dacs:pair.propulsion.dacs.command,rcs:pair.propulsion.attitudeRcs.translationCommand,range:pair.guidance.rangeM});
+    // 다이버트가 풀리는 모든 경로에서 병진 명령도 함께 0이 되어야 한다.
+    const clr=coasting(),clrTgt={x:6000,y:900,vx:0,vy:180,active:true};missileSetTruthGuidanceTarget(clr,clrTgt,{autoIgniteBoost:false});missileUpdateGuidance(clr,.01);
+    const clrHadRcs=Math.abs(clr.propulsion.attitudeRcs.translationCommand)>0;clrTgt.active=false;missileUpdateGuidance(clr,.01);
+    check('losing-the-target-clears-the-translation-command',clrHadRcs&&clr.propulsion.dacs.command===0&&clr.propulsion.attitudeRcs.translationCommand===0,{had:clrHadRcs,dacs:clr.propulsion.dacs.command,rcs:clr.propulsion.attitudeRcs.translationCommand,status:clr.guidance.status});
 
-    // 실제 갱신 순서로 300 m/s 횡단 표적을 요격하며 다이버트 축 정렬을 적분한다.
-    // 이 값이 크다는 것은 추진제가 크로스트랙이 아니라 진행 방향으로 나갔다는 뜻이다.
-    const sim=createMissileRigidBody(p.id,{x:0,y:0,vx:0,vy:0,angle:0}),simTgt={x:40000,y:-8000,vx:0,vy:300,active:true};
-    missileSetTruthGuidanceTarget(sim,simTgt,{autoIgniteBoost:true});
-    const dacs0=sim.propulsion.dacs.propRemainingKg;let simMin=Infinity,offSum=0,offN=0,offMax=0;
-    for(let t=0;t<75;t+=.01){simTgt.x+=simTgt.vx*.01;simTgt.y+=simTgt.vy*.01;sim.currentMainThrustN=0;
-      missileUpdateGuidance(sim,.01);missileUpdateAttitudeController(sim,.01);missileUpdateTvcActuator(sim,.01);missileUpdateAttitudeRcs(sim,.01);missileUpdateDacs(sim,.01);missileUpdateBoost(sim,.01);missileUpdateSustain(sim,.01);integrateMissileRigidBody(sim,.01);
-      simMin=Math.min(simMin,Math.hypot(simTgt.x-sim.x,simTgt.y-sim.y));
-      if(Math.abs(sim.propulsion.dacs.currentLateralThrustN)>1){const off=Math.abs(normalizeAngle(sim.angle-Math.atan2(sim.vy,sim.vx)))*180/Math.PI;offSum+=off;offN++;offMax=Math.max(offMax,off);}
-      if(sim.guidance.intercepted)break;}
-    const offMean=offN?offSum/offN:Infinity,simDacs=dacs0-sim.propulsion.dacs.propRemainingKg;
-    check('crossing-300mps-divert-axis-stays-cross-track',offN>0&&offMean<=Number(pc.terminalDivertMaxOffVelocityDeg)+2&&offMax<=Number(pc.terminalDivertMaxOffVelocityDeg)+12,{offMean,offMax,samples:offN});
-    // 교리 전환 전에는 같은 시나리오에서 17kg을 다 쓰고도 92m를 놓쳤다. 명중 자체가 판정 기준이다 —
-    // 추진제 사용량은 시커 잡음과 기동 표적에 따라 크게 흔들려 수치로 못 박으면 썩는다.
-    check('crossing-300mps-intercepts-with-divert-primary-steering',sim.guidance.intercepted&&simMin<20&&simDacs>0,{min:simMin,time:sim.ageS,dacsUsed:simDacs,budget:p.propulsion.dacs.propMassKg,rcsUsed:createMissileRigidBody(p.id).propulsion.attitudeRcs.propInitialKg-sim.propulsion.attitudeRcs.propRemainingKg});
+    // 폐기한 교리가 되살아나지 않는지 본다. 종말 몸통 권한은 속도 벡터에 묶여 있지 않아야 하고,
+    // 중간유도는 종전대로 +/-24도 안에 있어야 한다.
+    const offVelDeg=(m,sol)=>Math.abs(normalizeAngle(Number(sol.desiredAngleRad)-Math.atan2(m.vy,m.vx)))*180/Math.PI;
+    const near=coasting(),nearTgt={x:12000,y:2500,vx:0,vy:300,active:true};missileSetTruthGuidanceTarget(near,nearTgt,{autoIgniteBoost:false});
+    const nearSol=missileComputeGuidanceSolution(near,nearTgt);
+    check('terminal-body-authority-is-not-pinned-to-velocity',!!nearSol&&nearSol.terminal&&Math.abs(nearSol.commandNormalAccelMps2)>100&&offVelDeg(near,nearSol)>Number(pc.midcourseMaxThrustVectorOffVelocityDeg),{offDeg:nearSol?offVelDeg(near,nearSol):null,aN:nearSol?.commandNormalAccelMps2});
+    const far=coasting(),farTgt={x:34000,y:9000,vx:0,vy:300,active:true};missileSetTruthGuidanceTarget(far,farTgt,{autoIgniteBoost:false});
+    const farSol=missileComputeGuidanceSolution(far,farTgt);
+    check('midcourse-body-authority-unchanged',!!farSol&&!farSol.terminal&&offVelDeg(far,farSol)<=Number(pc.midcourseMaxThrustVectorOffVelocityDeg)+1e-6,{phase:farSol?.phase,offDeg:farSol?offVelDeg(far,farSol):null});
+    // DACS는 종전대로 startRangeM 안쪽에서만 붙는다(고오차/복구 예외는 별도).
+    const outer=coasting(),outerTgt={x:16000,y:400,vx:0,vy:60,active:true};missileSetTruthGuidanceTarget(outer,outerTgt,{autoIgniteBoost:false});missileUpdateGuidance(outer,.01);
+    const outerAimDeg=Math.abs(normalizeAngle(Math.atan2(outer.guidance.aimY-outer.y,outer.guidance.aimX-outer.x)-Math.atan2(outer.vy,outer.vx)))*180/Math.PI;
+    check('divert-still-gated-by-dacs-start-range',outer.guidance.rangeM>Number(p.guidance.dacs.startRangeM)&&outerAimDeg<Number(p.guidance.dacs.highErrorDeg)&&outer.propulsion.dacs.command===0&&outer.propulsion.attitudeRcs.translationCommand===0,{range:outer.guidance.rangeM,start:p.guidance.dacs.startRangeM,aimErrDeg:outerAimDeg,dacs:outer.propulsion.dacs.command,rcs:outer.propulsion.attitudeRcs.translationCommand});
   }catch(error){check('runtime',false,{error:String(error?.stack||error)});}
-  return {version:'1.31.38-MISSILE-TERMINAL-DIVERT-WIP79',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
+  return {version:'1.31.38-MISSILE-RCS-TRANSLATION-WIP79',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
   window.__SPACEFRAME_MISSILE_GUID_WIP17_TEST__=()=>{const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});try{
     const profile=missileRigidBodyProfile('arh-40k-prototype-body'),cfg=profile?.guidance||{};
     /* 유도는 pn-intercept에서 apn-intercept로 확장됐고 항법상수도 재조정됐다. 계열과 관계만 본다. */check('guidance-profile-contract',String(profile?.status||'').includes('MISSILE')&&/(^|-)intercept$/.test(String(cfg.type||''))&&(cfg.navigationConstant||0)>0&&(cfg.maxLeadTimeS||0)>=50&&cfg.sustain?.triggerRangeFractions?.length===4,{status:profile?.status,cfg});
