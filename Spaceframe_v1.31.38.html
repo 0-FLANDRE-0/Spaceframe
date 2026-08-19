@@ -13520,6 +13520,91 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
   }catch(error){check('runtime',false,{error:String(error?.stack||error)});}return {version:'1.31.36-MISSILE-PHYS-WIP16',model:'dacs-direct-lateral-v1',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};};
 
 
+  // WIP80 — 실전 경로 요격 벤치마크
+  // 기존 요격 단언은 전부 missileSetTruthGuidanceTarget(source='TEST_TRUTH')을 쓴다. 이 소스는
+  // 정의 1곳과 테스트 훅 1곳 외에는 하네스 안에서만 호출된다 — 실제 발사(fireMissileFromLauncher)는
+  // MAD DOG(ARH) / 방위 cue / MIDCOURSE_DL만 탄다. TEST_TRUTH는 시커가 트랙을 소유하지 않으므로
+  // missileGuidanceStableNoseAngle의 짐벌 원뿔 정형도, 시커 측정 잡음도 겪지 않는다.
+  //
+  // 1.31.38 종말 다이버트 작업이 이 구멍에 정확히 빠졌다. TEST_TRUTH 격자에서 21/30 -> 27/30으로
+  // 좋아 보였던 변경이 실제 경로에서는 15/15 -> 2/15로 무너졌고, 하네스가 그걸 못 잡았다.
+  // 이 하네스는 그 사각을 메운다: DL 중간유도로 발사해 16km에서 ARH 시커가 인계받는 실제 경로로만
+  // 요격을 판정한다.
+  //
+  // 최근접거리는 100Hz 샘플이 아니라 매 틱 상대 직선운동으로 보간해 구한다. 접근속도가 1.2km/s를
+  // 넘어 틱당 12m를 이동하므로, 샘플 최소값을 그대로 쓰면 분해능이 12m가 되어 20m 판정선과 섞인다.
+  window.__SPACEFRAME_MISSILE_LIVE_INTERCEPT_WIP80_TEST__=()=>{
+    const results=[],check=(name,pass,detail={})=>results.push({name,pass:!!pass,...detail});
+    const savedBattle=battle,savedMissiles=missiles;
+    try{
+      const profile=missileRigidBodyProfile('arh-40k-prototype-body');
+      // 표적은 게임 자체의 applyFlightControl로 움직인다 — 선회율과 가속 한계를 그대로 받는다.
+      const run=(opts)=>{
+        const o=Object.assign({vy:180,y0:0,rangeM:40000,policy:'none',breakRangeM:12000,weavePeriodS:20,weaveDeg:60,dt:.01,maxT:80},opts||{});
+        missiles=[];
+        const d=cloneDesign(defaultDesign());
+        if(!(d.modules||[]).some(q=>q.type==='radar'))addDefaultBoundarySensor(d,'radar','front');
+        const mp=fcsModuleProfile('fcs-missile-node');
+        if(!(d.modules||[]).some(isMissileFcsModule))d.modules.push(makeModule('fcs',24,18,mp.sw,mp.sh,{fcsProfileId:mp.id}));
+        const own=createShip('live-own','LIVE OWN',d,0,0,0,'player'),tgt=createShip('live-tgt','LIVE TGT',defaultDesign(),o.rangeM,o.y0,Math.PI,'enemy');
+        battle={player:own,enemies:[tgt],time:0};syncPowerSystem(own);syncPowerSystem(tgt);
+        tgt.vx=0;tgt.vy=o.vy;tgt.angle=o.vy>=0?Math.PI/2:-Math.PI/2;
+        const tr=createSensorTrack(own,tgt);own.sensorTracks[tgt.id]=tr;
+        Object.assign(tr,{detected:true,rangeKnown:true,detectionQuality:.9,radarDetected:true,radarFix:true,radarTrackClass:'TWS',radarTrackQuality:.75,radarRangeM:Math.hypot(tgt.x-own.x,tgt.y-own.y),lastNonEmFixAtS:battle.time,source:'TWS',estimatedX:tgt.x,estimatedY:tgt.y,estimatedVx:tgt.vx,estimatedVy:tgt.vy,estimatedAx:0,estimatedAy:0,positionUncertaintyM:80,velocityUncertaintyMps:8,accelerationUncertaintyMps2:3,trackAgeS:.05});
+        const m=createMissileRigidBody(profile.id,{ownerId:own.id,x:0,y:0,vx:0,vy:0,angle:0});missiles.push(m);
+        const linked=missileSetDatalinkGuidanceTarget(m,own,tgt.id,{autoIgniteBoost:true});
+        const baseSpeed=Math.max(1,Math.hypot(tgt.vx,tgt.vy)),baseDir=Math.atan2(tgt.vy,tgt.vx);
+        let cpa=Infinity,broke=false,seekerOwned=false,coastSeen=false;
+        for(let t=0;t<o.maxT;t+=o.dt){
+          battle.time+=o.dt;
+          const px=m.x,py=m.y,qx=tgt.x,qy=tgt.y,R=Math.hypot(tgt.x-m.x,tgt.y-m.y);
+          let dir=baseDir;
+          if(o.policy==='break'){if(!broke&&R<=o.breakRangeM)broke=true;dir=broke?baseDir+Math.PI/2:baseDir;}
+          else if(o.policy==='weave')dir=baseDir+(o.weaveDeg*Math.PI/180)*Math.sin(2*Math.PI*t/Math.max(1,o.weavePeriodS));
+          const dv={x:Math.cos(dir)*baseSpeed,y:Math.sin(dir)*baseSpeed},need=Math.hypot(dv.x-tgt.vx,dv.y-tgt.vy);
+          applyFlightControl(tgt,o.dt,dv,need>1?Math.atan2(dv.y-tgt.vy,dv.x-tgt.vx):Math.atan2(tgt.vy,tgt.vx),getDynamics(tgt));
+          tr.estimatedX=tgt.x;tr.estimatedY=tgt.y;tr.estimatedVx=tgt.vx;tr.estimatedVy=tgt.vy;
+          tr.estimatedAx=Number(tgt.ax)||0;tr.estimatedAy=Number(tgt.ay)||0;tr.trackAgeS=.05;tr.lastNonEmFixAtS=battle.time;
+          m.currentMainThrustN=0;
+          missileUpdateGuidance(m,o.dt);missileUpdateDeferredBoostIgnition(m);missileUpdateAttitudeController(m,o.dt);
+          missileUpdateTvcActuator(m,o.dt);missileUpdateAttitudeRcs(m,o.dt);missileUpdateDacs(m,o.dt);
+          missileUpdateBoost(m,o.dt);missileUpdateSustain(m,o.dt);integrateMissileRigidBody(m,o.dt);
+          if(m.guidance.source==='ARH_SEEKER')seekerOwned=true;
+          if(m.guidance.datalink?.status==='INS_COAST')coastSeen=true;
+          const rx=qx-px,ry=qy-py,dx=(tgt.x-m.x)-rx,dy=(tgt.y-m.y)-ry,dd=dx*dx+dy*dy;
+          let s=dd>1e-12?-(rx*dx+ry*dy)/dd:0;s=Math.max(0,Math.min(1,s));
+          cpa=Math.min(cpa,Math.hypot(rx+dx*s,ry+dy*s));
+          if(R>o.rangeM+30000&&t>25)break;
+        }
+        return {linked,cpa,seekerOwned,coastSeen,ageS:m.ageS,dacsUsed:profile.propulsion.dacs.propMassKg-m.propulsion.dacs.propRemainingKg,rcsLeft:m.propulsion.attitudeRcs.propRemainingKg,translationNs:Number(m.propulsion.attitudeRcs.totalTranslationImpulseNs)||0,missile:m};
+      };
+      const HIT=Number(profile?.guidance?.interceptTestRadiusM)||20;
+
+      // 실제 경로가 실제로 시커 인계까지 도달하는지부터 못 박는다. 이게 깨지면 아래 판정은 의미가 없다.
+      const base=run({vy:180});
+      check('live-path-runs-datalink-then-arh-seeker',base.linked&&base.seekerOwned&&base.missile.guidance.datalink.packetsRx>0,{linked:base.linked,seekerOwned:base.seekerOwned,rx:base.missile.guidance.datalink.packetsRx,source:base.missile.guidance.source});
+      check('live-crossing-180mps-intercept',base.cpa<HIT,{cpa:base.cpa,ageS:base.ageS,dacsUsed:base.dacsUsed});
+      // TEST_TRUTH 경로에서 92m를 놓치던 300 m/s 횡단 표적. 실제 경로에서는 원래 맞는다.
+      const cross300=run({vy:300});
+      check('live-crossing-300mps-intercept',cross300.cpa<HIT,{cpa:cross300.cpa,ageS:cross300.ageS,dacsUsed:cross300.dacsUsed});
+      const cross360=run({vy:360});
+      check('live-crossing-360mps-intercept',cross360.cpa<HIT,{cpa:cross360.cpa,ageS:cross360.ageS,dacsUsed:cross360.dacsUsed});
+      // 회피 기동. 표적은 자기 선회율(11.2 deg/s^2)과 주엔진(22.5 m/s^2) 안에서만 움직인다.
+      const brk=run({vy:240,policy:'break',breakRangeM:12000});
+      check('live-beam-break-at-12km-intercept',brk.cpa<HIT,{cpa:brk.cpa,ageS:brk.ageS,dacsUsed:brk.dacsUsed});
+      const weave=run({vy:240,policy:'weave',weavePeriodS:20,weaveDeg:60});
+      check('live-weaving-target-intercept',weave.cpa<HIT,{cpa:weave.cpa,ageS:weave.ageS,dacsUsed:weave.dacsUsed});
+      // 근거리 발사는 중간유도 여유가 없어 시커 인계 직후 바로 종말이다.
+      const near=run({rangeM:20000,vy:180});
+      check('live-20km-launch-intercept',near.cpa<HIT,{cpa:near.cpa,ageS:near.ageS,dacsUsed:near.dacsUsed});
+      // 자세 RCS 병진이 실제 경로에서 실제로 쓰이는지 본다. 안 쓰이면 WIP79 단위 시험이 통과해도
+      // 기능이 죽어 있을 수 있다. (예비분은 병진 지출에만 걸리고 토크 지출은 그 아래로 내려간다 —
+      // 자세 제어가 우선 사용자이므로 잔량 자체를 판정 기준으로 삼으면 안 된다.)
+      check('live-intercept-actually-uses-rcs-translation',base.translationNs>0&&brk.translationNs>0,{base:base.translationNs,brk:brk.translationNs});
+    }catch(error){check('runtime',false,{error:String(error?.stack||error)});}
+    finally{battle=savedBattle;missiles=savedMissiles;}
+    return {version:'1.31.38-MISSILE-LIVE-INTERCEPT-WIP80',all:results.every(q=>q.pass),passed:results.filter(q=>q.pass).length,total:results.length,results};
+  };
   // WIP79 — 자세 RCS 병진 추력
   // 자세 RCS는 같은 추력기 뱅크를 짝힘(토크)으로도, 동방향 분사(병진)로도 쓸 수 있다. 병진은
   // 몸통을 돌리지 않고 궤도를 옮기므로 종말 다이버트를 보조한다. DACS의 약 8% 권한이지만,
@@ -13594,7 +13679,10 @@ if(!p.lockId){ctx.fillStyle='rgba(190,215,228,.42)';ctx.font='12px system-ui';ct
     function runScenario(target,opts={}){const m=createMissileRigidBody(profile.id,{x:0,y:0,vx:opts.vx||0,vy:opts.vy||0,angle:opts.angle||0});missileSetTruthGuidanceTarget(m,target,{autoIgniteBoost:true});const dt=opts.dt||.01,maxT=opts.maxT||80,dacs0=m.propulsion.dacs.propRemainingKg;let min=Infinity;for(let t=0;t<maxT;t+=dt){if(opts.move)opts.move(target,dt,t);m.currentMainThrustN=0;missileUpdateGuidance(m,dt);missileUpdateAttitudeController(m,dt);missileUpdateTvcActuator(m,dt);missileUpdateAttitudeRcs(m,dt);missileUpdateDacs(m,dt);missileUpdateBoost(m,dt);missileUpdateSustain(m,dt);integrateMissileRigidBody(m,dt);const d=Math.hypot(target.x-m.x,target.y-m.y);min=Math.min(min,d);if(m.guidance.intercepted)break;}return {m,min,dacsUsed:dacs0-m.propulsion.dacs.propRemainingKg};}
     const stationary=runScenario({x:40000,y:0,vx:0,vy:0,active:true},{maxT:65});check('40km-stationary-truth-target-intercept',stationary.m.guidance.intercepted&&stationary.min<20&&stationary.m.ageS<55,{min:stationary.min,time:stationary.m.ageS,pulses:stationary.m.propulsion.sustain.completedPulses});
     const cross180Target={x:40000,y:-6000,vx:0,vy:180,active:true},cross180=runScenario(cross180Target,{maxT:70,move:(t,dt)=>{t.x+=t.vx*dt;t.y+=t.vy*dt;}});check('crossing-180mps-intercept',cross180.m.guidance.intercepted&&cross180.min<20,{min:cross180.min,time:cross180.m.ageS,dacsUsed:cross180.dacsUsed});
-    const cross300Target={x:40000,y:-8000,vx:0,vy:300,active:true},cross300=runScenario(cross300Target,{maxT:75,move:(t,dt)=>{t.x+=t.vx*dt;t.y+=t.vy*dt;}});check('crossing-300mps-intercept-requires-terminal-divert',cross300.m.guidance.intercepted&&cross300.min<20&&cross300.dacsUsed>8,{min:cross300.min,time:cross300.m.ageS,dacsUsed:cross300.dacsUsed,dacsDv:missileDacsRemainingDeltaVMps(cross300.m)});
+    // 300 m/s 횡단 표적 요격은 여기서 판정하지 않는다. 이 하네스의 유도원은 TEST_TRUTH라 시커가
+    // 트랙을 소유하지 않고, 그래서 missileGuidanceStableNoseAngle의 짐벌 원뿔 정형을 받지 못한다.
+    // 그 상태에서만 나타나는 90m급 오차를 좇다가 실제 경로를 크게 망가뜨린 전례가 있다(1.31.38).
+    // 실제 경로(DL -> ARH) 판정은 __SPACEFRAME_MISSILE_LIVE_INTERCEPT_WIP80_TEST__에 있다.
     const recedingTarget={x:35000,y:0,vx:180,vy:0,active:true},receding=runScenario(recedingTarget,{maxT:75,move:(t,dt)=>{t.x+=t.vx*dt;}});check('receding-180mps-intercept',receding.m.guidance.intercepted&&receding.min<20,{min:receding.min,time:receding.m.ageS});
     const lost=createMissileRigidBody(profile.id),lostTarget={x:10000,y:0,vx:0,vy:0,active:true};missileSetTruthGuidanceTarget(lost,lostTarget,{autoIgniteBoost:false});missileSetDacsCommand(lost,1);lostTarget.active=false;missileUpdateGuidance(lost,.1);check('lost-truth-target-clears-terminal-divert-command',lost.guidance.status==='lost'&&lost.propulsion.dacs.command===0,{status:lost.guidance.status,dacs:lost.propulsion.dacs.command});
     check('truth-guidance-is-explicit-test-source-only',probe.guidance.source==='TEST_TRUTH'&&typeof probe.guidance.truthTarget==='object',{source:probe.guidance.source});
